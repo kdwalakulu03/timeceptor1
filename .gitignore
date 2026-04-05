@@ -1,0 +1,27 @@
+node_modules/
+build/
+dist/
+coverage/
+.DS_Store
+*.log
+
+
+
+# Secret keys — NEVER commit
+stripe.txt
+
+# Runtime data — back up separately, never commit to git
+# data/ is your single source of truth for all app data
+data/subscribers.json
+data/firebase-service-account.json
+
+# PM2 logs
+logs/
+
+# PM2 runtime
+.pm2/
+
+# Environment secrets
+.env
+.env.local
+.env.production

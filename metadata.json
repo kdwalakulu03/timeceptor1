@@ -1,0 +1,7 @@
+{
+  "name": "Timecept",
+  "description": "A Vedic timing system that calculates optimal yoga windows based on planetary hours and birth details.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}

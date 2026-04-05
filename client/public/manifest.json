@@ -1,0 +1,29 @@
+{
+  "name": "Timeceptor",
+  "short_name": "Timeceptor",
+  "id": "/",
+  "description": "Vedic planetary timing for modern life",
+  "start_url": "/dashboard",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#050505",
+  "theme_color": "#050505",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["lifestyle", "health", "spirituality"],
+  "lang": "en",
+  "prefer_related_applications": false
+}

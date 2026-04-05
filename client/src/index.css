@@ -1,0 +1,52 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700&family=JetBrains+Mono:wght@400;500&family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Syne:wght@400;500;600&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", sans-serif;
+  --font-display: "Outfit", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+  
+  --color-gold: #d4af37; /* More classic metallic gold */
+  --color-gold-light: #f4d03f;
+  --color-gold-dim: #8a6d1d;
+  --color-cream: #fdfcf0;
+  --color-cream-dim: #949185;
+  --color-space-bg: #050505;
+  --color-space-card: #0f0f0f;
+}
+
+@layer base {
+  body {
+    @apply bg-space-bg text-cream font-sans min-h-screen overflow-x-hidden text-lg antialiased selection:bg-gold/30 selection:text-white;
+  }
+}
+
+@keyframes twinkle {
+  from { opacity: 0; transform: scale(0.8); }
+  to { opacity: var(--twinkle-opacity, 1); transform: scale(1); }
+}
+
+.star {
+  @apply absolute bg-white rounded-full pointer-events-none;
+  animation: twinkle var(--twinkle-duration, 3s) ease-in-out infinite alternate;
+}
+
+@keyframes spin-slow {
+  from { transform: translate(-50%, -50%) rotate(0deg); }
+  to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+.mandala-bg {
+  @apply fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] opacity-[0.04] pointer-events-none z-0;
+  animation: spin-slow 120s linear infinite;
+}
+
+@layer utilities {
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}

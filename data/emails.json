@@ -1,0 +1,17 @@
+[
+  {
+    "email": "test@example.com",
+    "uid": "test123",
+    "ts": "2026-04-02T16:31:11.184Z"
+  },
+  {
+    "email": "newuser@test.com",
+    "uid": "guest",
+    "ts": "2026-04-02T16:32:52.863Z"
+  },
+  {
+    "email": "kde@helo.com",
+    "uid": "VbUb5E74WrcidiYDcto54cmGdsF3",
+    "ts": "2026-04-02T16:42:26.624Z"
+  }
+]
