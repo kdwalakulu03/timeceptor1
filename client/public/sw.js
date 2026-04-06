@@ -7,11 +7,8 @@
  *  3. Notification click → open /dashboard
  */
 
-const CACHE_NAME = 'timeceptor-v1';
+const CACHE_NAME = 'timeceptor-v2';
 const STATIC_ASSETS = [
-  '/',
-  '/app',
-  '/dashboard',
   '/manifest.json',
 ];
 
@@ -33,29 +30,41 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// ── Fetch: network-first for API, cache-first for assets ─────────────────
+// ── Fetch: network-first for navigation, cache-first for hashed assets ───
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // Never cache API calls
+  // Never intercept API calls or Firebase auth
   if (url.pathname.startsWith('/api')) return;
+  if (url.pathname.startsWith('/__/auth')) return;
 
+  // Navigation requests (HTML pages): always network-first
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          if (response.ok) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          }
+          return response;
+        })
+        .catch(() => caches.match(event.request).then((c) => c || caches.match('/')))
+    );
+    return;
+  }
+
+  // Static assets (JS/CSS with hashed filenames): cache-first
   event.respondWith(
     caches.match(event.request).then((cached) => {
-      const fetchPromise = fetch(event.request).then((response) => {
-        // Cache successful GET responses
+      if (cached) return cached;
+      return fetch(event.request).then((response) => {
         if (response.ok && event.request.method === 'GET') {
           const clone = response.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
         }
         return response;
-      }).catch(() => {
-        // Offline: return cached version or SPA fallback
-        return cached || caches.match('/');
       });
-
-      // Return cached immediately, update in background (stale-while-revalidate)
-      return cached || fetchPromise;
     })
   );
 });

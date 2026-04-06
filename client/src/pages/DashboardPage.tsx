@@ -5,7 +5,7 @@
  * Reads stored windows from server (pre-calculated 90 days).
  * No re-entry of birth details needed — user profile has them.
  */
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import type { User } from 'firebase/auth';
@@ -14,6 +14,7 @@ import { Background } from '../components/Background';
 import { WeeklyView } from '../components/WeeklyView';
 import { ServiceSelector } from '../components/ServiceSelector';
 import { TodaySummary } from '../components/TodaySummary';
+import { getWeeklyWindows } from '../lib/scoring';
 import type { HourWindow, ServiceId } from '../types';
 
 export default function DashboardPage() {
@@ -28,6 +29,9 @@ export default function DashboardPage() {
   const [accessDays, setAccessDays] = useState(3);
   const [hasPaid, setHasPaid] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [birthData, setBirthData] = useState<{
+    birthDate: string; birthTime: string; lat: number; lng: number; locationName: string;
+  } | null>(null);
 
   // Auth gate
   useEffect(() => {
@@ -45,19 +49,48 @@ export default function DashboardPage() {
     setPushSupported('serviceWorker' in navigator && 'PushManager' in window);
   }, []);
 
-  // Fetch access status
+  // Fetch profile (birth data + access status) in one shot
   useEffect(() => {
     if (!user) return;
     (async () => {
       try {
         const token = await user.getIdToken();
-        const res = await fetch('/api/users/me/access', {
+        // Access info
+        const accessRes = await fetch('/api/users/me/access', {
           headers: { Authorization: `Bearer ${token}` },
         });
-        if (res.ok) {
-          const data = await res.json();
+        if (accessRes.ok) {
+          const data = await accessRes.json();
           setAccessDays(data.daysLeft ?? 3);
           setHasPaid(data.paid ?? false);
+        }
+        // Birth data from profile
+        const profileRes = await fetch('/api/users/me', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (profileRes.ok) {
+          const profile = await profileRes.json();
+          if (profile.birthDate && profile.birthTime && profile.lat != null) {
+            setBirthData({
+              birthDate: profile.birthDate,
+              birthTime: profile.birthTime,
+              lat: profile.lat,
+              lng: profile.lng,
+              locationName: profile.locationName ?? '',
+            });
+            // Trigger server-side precalc in background (for push notifications)
+            fetch('/api/users/setup', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+              body: JSON.stringify({
+                birthDate: profile.birthDate,
+                birthTime: profile.birthTime,
+                lat: profile.lat,
+                lng: profile.lng,
+                locationName: profile.locationName ?? '',
+              }),
+            }).catch(() => {}); // fire-and-forget
+          }
         }
       } catch { /* ignore */ }
     })();
@@ -104,45 +137,28 @@ export default function DashboardPage() {
     }
   }, [user]);
 
-  // Fetch saved windows from server
-  const fetchWindows = useCallback(async () => {
-    if (!user) return;
+  // Compute windows client-side when birth data or service selection changes
+  // Paid users get 90 days, free users get 7 days
+  const computeDays = hasPaid ? 90 : 7;
+  useEffect(() => {
+    if (!birthData) return;
+    const weekStart = new Date();
+    weekStart.setHours(0, 0, 0, 0);
     try {
-      const token = await user.getIdToken();
-      const start = new Date();
-      start.setHours(0, 0, 0, 0);
-      const end = new Date(start);
-      end.setDate(end.getDate() + 7);
-
-      const res = await fetch(
-        `/api/windows?uid=${user.uid}&startDate=${start.toISOString().slice(0, 10)}&endDate=${end.toISOString().slice(0, 10)}&service=${selectedService}`,
-        { headers: { Authorization: `Bearer ${token}` } }
+      const wins = getWeeklyWindows(
+        birthData.birthDate,
+        birthData.birthTime,
+        birthData.lat,
+        birthData.lng,
+        weekStart,
+        selectedService,
+        computeDays,
       );
-      if (!res.ok) throw new Error('Failed to fetch windows');
-      const data = await res.json();
-
-      // Server tells us how many days are unlocked
-      if (data.accessDays != null) setAccessDays(data.accessDays);
-      if (data.hasPaid != null) setHasPaid(data.hasPaid);
-
-      // Transform server rows to HourWindow[]
-      const wins: HourWindow[] = (data.windows ?? data ?? []).map((w: any) => ({
-        date: new Date(w.date + 'T00:00:00'),
-        hour: w.hour,
-        score: w.score,
-        activity: w.activity,
-        horaRuler: w.horaRuler ?? w.hora_ruler ?? '',
-        planets: w.planets ?? [],
-        isMorning: w.isMorning ?? w.is_morning ?? false,
-      }));
       setWindows(wins);
     } catch (e) {
-      console.warn('[dashboard] fetch windows:', e);
-      // Falls back to local calculation if server windows unavailable
+      console.warn('[dashboard] compute windows:', e);
     }
-  }, [user, selectedService]);
-
-  useEffect(() => { fetchWindows(); }, [fetchWindows]);
+  }, [birthData, selectedService, computeDays]);
 
   // Enable push notifications
   const enablePush = async () => {
@@ -170,10 +186,16 @@ export default function DashboardPage() {
     }
   };
 
+  // Full-screen loading: auth check or fetching birth data
+  const isDataLoading = loading || (user && !birthData && windows.length === 0);
+
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-space-bg">
-        <div className="w-8 h-8 border-2 border-gold/40 border-t-gold rounded-full animate-spin" />
+      <div className="min-h-screen flex flex-col items-center justify-center bg-space-bg gap-4">
+        <div className="w-10 h-10 border-2 border-gold/40 border-t-gold rounded-full animate-spin" />
+        <p className="font-mono text-xs text-cream-dim tracking-widest uppercase animate-pulse">
+          Loading your cosmic data…
+        </p>
       </div>
     );
   }
@@ -200,6 +222,11 @@ export default function DashboardPage() {
           Timeceptor
         </Link>
         <div className="flex items-center gap-3 sm:gap-4">
+          {hasPaid && (
+            <Link to="/swot" className="font-mono text-xs text-gold tracking-widest uppercase hover:text-gold-light transition-colors hidden sm:block">
+              ✦ SWOT
+            </Link>
+          )}
           <Link to="/app" className="font-mono text-xs text-cream-dim tracking-widest uppercase hover:text-gold transition-colors hidden sm:block">
             Calculator
           </Link>
@@ -220,6 +247,15 @@ export default function DashboardPage() {
             </button>
             {userMenuOpen && (
               <div className="absolute right-0 top-full mt-2 w-44 bg-space-card border border-gold/20 rounded-sm shadow-xl z-50">
+                {hasPaid && (
+                  <Link
+                    to="/swot"
+                    onClick={() => setUserMenuOpen(false)}
+                    className="block w-full text-left px-4 py-3 font-mono text-xs tracking-widest uppercase text-gold hover:text-gold-light hover:bg-gold/5 transition-colors border-b border-gold/10"
+                  >
+                    ✦ SWOT Analysis
+                  </Link>
+                )}
                 <Link
                   to="/app"
                   onClick={() => setUserMenuOpen(false)}
@@ -244,14 +280,28 @@ export default function DashboardPage() {
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-6 sm:mb-8"
+          className="mb-6 sm:mb-8 flex items-start justify-between gap-4"
         >
-          <h1 className="text-xl sm:text-2xl font-display font-semibold mb-1">
-            {getGreeting()}, {user.displayName?.split(' ')[0] ?? 'Explorer'}
-          </h1>
-          <p className="font-mono text-xs sm:text-sm text-cream-dim tracking-widest uppercase">
-            {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
-          </p>
+          <div>
+            <h1 className="text-xl sm:text-2xl font-display font-semibold mb-1">
+              {getGreeting()}, {user.displayName?.split(' ')[0] ?? 'Explorer'}
+            </h1>
+            <p className="font-mono text-xs sm:text-sm text-cream-dim tracking-widest uppercase">
+              {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+            </p>
+          </div>
+          {birthData && (
+            <div className="text-right shrink-0">
+              <p className="font-mono text-xs text-cream-dim tracking-wide">
+                Your Birthday = {(() => { const [y,m,d] = birthData.birthDate.split('-'); return new Date(Number(y), Number(m)-1, Number(d)).toLocaleDateString('en-US', { month: 'long', day: 'numeric' }); })()}
+              </p>
+              {birthData.locationName && (
+                <p className="font-mono text-xs text-cream-dim tracking-wide mt-0.5">
+                  Location = {birthData.locationName}
+                </p>
+              )}
+            </div>
+          )}
         </motion.div>
 
         {/* Push notification banner */}
@@ -326,16 +376,37 @@ export default function DashboardPage() {
             />
           ) : (
             <div className="text-center py-12 sm:py-16">
-              <p className="text-cream-dim mb-4 text-sm sm:text-base">No windows calculated yet.</p>
+              <p className="text-cream-dim mb-4 text-sm sm:text-base">
+                {hasPaid
+                  ? 'Enter your birth details once to unlock your personal cosmic windows.'
+                  : 'No windows calculated yet.'}
+              </p>
               <Link
                 to="/app"
                 className="inline-block px-6 py-3 bg-gold text-space-bg font-mono text-xs font-bold tracking-widest uppercase hover:bg-gold-light transition-all rounded-sm"
               >
-                Calculate My Windows
+                {hasPaid ? '✦ Set Up My Chart' : 'Calculate My Windows'}
               </Link>
             </div>
           )}
         </motion.div>
+
+        {/* Premium status badge for paid users */}
+        {hasPaid && windows.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.3 }}
+            className="mt-6 text-center"
+          >
+            <div className="inline-flex items-center gap-2 px-4 py-2 border border-gold/20 rounded-full bg-gold/5">
+              <span className="text-gold text-xs">✦</span>
+              <span className="font-mono text-xs text-gold tracking-widest uppercase font-semibold">
+                Full Access · {accessDays} days remaining
+              </span>
+            </div>
+          </motion.div>
+        )}
       </main>
 
       <footer className="relative z-10 border-t border-gold/10 px-4 sm:px-6 py-8 md:px-12 flex flex-col md:flex-row justify-between items-center gap-4">

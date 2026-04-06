@@ -541,16 +541,15 @@ export function WeeklyView({ windows, unlockedDays = 3, onUnlock, user, selected
         </div>
       )}
 
-      {/* Day rows */}
+      {/* Unlocked day rows */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
         {dayGroups.map((day, idx) => {
+          if (day.locked) return null;
           const isExpanded = expandedIdx === idx;
-          const isLocked = day.locked;
           const autoRating = getDayRating(day.avgScore);
           const dd = day.dayDate;
           const dateKey = `${dd.getFullYear()}-${String(dd.getMonth() + 1).padStart(2, '0')}-${String(dd.getDate()).padStart(2, '0')}`;
           const savedRating = userRatings[dateKey] ?? null;
-          // Show user rating label on collapsed card if submitted
           const displayRating = savedRating !== null
             ? { label: STEP_LABEL[savedRating - 1], emoji: STEP_EMOJI[savedRating - 1], color: STEP_COLOR_TEXT[savedRating - 1] }
             : autoRating;
@@ -560,19 +559,17 @@ export function WeeklyView({ windows, unlockedDays = 3, onUnlock, user, selected
               border: `1px solid ${day.isToday ? C.borderPeak : C.border}`,
               borderRadius: 10, overflow: 'hidden', position: 'relative',
             }}>
-              {/* Collapsed row */}
               <div
-                onClick={() => !isLocked && toggleExpand(idx)}
+                onClick={() => toggleExpand(idx)}
                 style={{
                   display: 'grid',
                   gridTemplateColumns: '74px 1fr 56px 18px',
                   alignItems: 'center',
                   gap: 10, padding: '10px 14px',
-                  cursor: isLocked ? 'default' : 'pointer',
+                  cursor: 'pointer',
                   userSelect: 'none',
                 }}
               >
-                {/* LEFT: Date + best score below */}
                 <div style={{ minWidth: 0 }}>
                   <div style={{
                     fontSize: 11, fontWeight: 700, letterSpacing: '0.06em',
@@ -585,10 +582,7 @@ export function WeeklyView({ windows, unlockedDays = 3, onUnlock, user, selected
                     {day.dateLabel}
                   </div>
                   <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginTop: 2 }}>
-                    <span style={{
-                      fontSize: 18, fontWeight: 700,
-                      color: isLocked ? C.textDim : C.gold, lineHeight: 1,
-                    }}>
+                    <span style={{ fontSize: 18, fontWeight: 700, color: C.gold, lineHeight: 1 }}>
                       {day.peakScore}
                     </span>
                     <span style={{ fontSize: 9, color: C.textDim }}>{fmt24(day.peakHour)}</span>
@@ -597,11 +591,7 @@ export function WeeklyView({ windows, unlockedDays = 3, onUnlock, user, selected
                     {String(day.startHour).padStart(2,'0')}–{String(day.endHour).padStart(2,'0')}
                   </div>
                 </div>
-
-                {/* CENTER: Mini bar chart */}
-                <DayBars windows={day.allWindows} height={26} dim={isLocked} nowHour={nowHour} isToday={day.isToday} />
-
-                {/* RIGHT: Day rating */}
+                <DayBars windows={day.allWindows} height={26} dim={false} nowHour={nowHour} isToday={day.isToday} />
                 <div style={{ textAlign: 'right' }}>
                   <div style={{ fontSize: 14, lineHeight: 1 }}>{displayRating.emoji}</div>
                   <div style={{
@@ -614,22 +604,16 @@ export function WeeklyView({ windows, unlockedDays = 3, onUnlock, user, selected
                     <div style={{ fontSize: 7, color: C.textDim, marginTop: 1 }}>✓ rated</div>
                   )}
                 </div>
-
-                {/* Expand chevron */}
-                {!isLocked ? (
-                  <motion.div
-                    animate={{ rotate: isExpanded ? 180 : 0 }}
-                    transition={{ duration: 0.2 }}
-                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                  >
-                    <ChevronDown size={14} color={C.textDim} />
-                  </motion.div>
-                ) : <span />}
+                <motion.div
+                  animate={{ rotate: isExpanded ? 180 : 0 }}
+                  transition={{ duration: 0.2 }}
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                >
+                  <ChevronDown size={14} color={C.textDim} />
+                </motion.div>
               </div>
-
-              {/* Expanded zoom panel */}
               <AnimatePresence initial={false}>
-                {isExpanded && !isLocked && (
+                {isExpanded && (
                   <DayExpander
                     day={day}
                     nowHour={nowHour}
@@ -639,59 +623,179 @@ export function WeeklyView({ windows, unlockedDays = 3, onUnlock, user, selected
                   />
                 )}
               </AnimatePresence>
-
-              {/* Lock overlay */}
-              {isLocked && (
-                <div style={{
-                  position: 'absolute', inset: 0,
-                  background: 'rgba(6,6,15,0.30)',
-                  backdropFilter: 'blur(1.5px)', WebkitBackdropFilter: 'blur(1.5px)',
-                  display: 'flex', flexDirection: 'column',
-                  alignItems: 'center', justifyContent: 'center',
-                  gap: 6, zIndex: 3,
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-                    <Lock size={10} color={C.gold} />
-                    <span style={{ fontSize: 11, color: C.gold, letterSpacing: '0.06em', fontFamily: FONT, fontWeight: 600 }}>
-                      Unlock Your Golden Hours
-                    </span>
-                  </div>
-                  <span style={{ fontSize: 9, color: C.textDim, fontFamily: FONT }}>
-                    90 days of full planetary timing
-                  </span>
-                  <button
-                    onClick={onUnlock}
-                    style={{
-                      background: 'linear-gradient(135deg, rgba(244,161,29,0.15) 0%, rgba(244,161,29,0.08) 100%)',
-                      border: `1px solid ${C.borderPeak}`,
-                      color: C.gold, cursor: 'pointer',
-                      fontFamily: FONT,
-                      fontSize: 10, fontWeight: 700,
-                      letterSpacing: '0.08em', textTransform: 'uppercase',
-                      padding: '6px 16px', borderRadius: 20,
-                      transition: 'all 0.2s',
-                    }}
-                    onMouseEnter={(e) => { (e.target as HTMLButtonElement).style.background = 'rgba(244,161,29,0.20)'; }}
-                    onMouseLeave={(e) => { (e.target as HTMLButtonElement).style.background = 'linear-gradient(135deg, rgba(244,161,29,0.15) 0%, rgba(244,161,29,0.08) 100%)'; }}
-                  >
-                    ✦ Unlock Now
-                  </button>
-                </div>
-              )}
             </div>
           );
         })}
       </div>
 
+      {/* Locked rows (left) + CTA cards (right) — split layout */}
+      {unlockedDays < 90 && (
+        <div style={{ display: 'flex', flexDirection: 'row', gap: 12, marginTop: 5, fontFamily: FONT, alignItems: 'flex-start' }}>
+
+          {/* LEFT: locked day rows stacked as they appear */}
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 5 }}>
+            {dayGroups.map((day, idx) => {
+              if (!day.locked) return null;
+              const autoRating = getDayRating(day.avgScore);
+              const dd = day.dayDate;
+              const dateKey = `${dd.getFullYear()}-${String(dd.getMonth() + 1).padStart(2, '0')}-${String(dd.getDate()).padStart(2, '0')}`;
+              const savedRating = userRatings[dateKey] ?? null;
+              const displayRating = savedRating !== null
+                ? { label: STEP_LABEL[savedRating - 1], emoji: STEP_EMOJI[savedRating - 1], color: STEP_COLOR_TEXT[savedRating - 1] }
+                : autoRating;
+
+              return (
+                <div key={idx} style={{
+                  border: `1px solid ${C.border}`,
+                  borderRadius: 10, overflow: 'hidden', position: 'relative',
+                }}>
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: '74px 1fr 56px 18px',
+                    alignItems: 'center',
+                    gap: 10, padding: '10px 14px',
+                    cursor: 'default', userSelect: 'none',
+                  }}>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{
+                        fontSize: 11, fontWeight: 700, letterSpacing: '0.06em',
+                        textTransform: 'uppercase',
+                        color: C.textMid, lineHeight: 1.2,
+                      }}>
+                        {day.dayName}
+                      </div>
+                      <div style={{ fontSize: 11, color: C.textDim, lineHeight: 1.3 }}>
+                        {day.dateLabel}
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginTop: 2 }}>
+                        <span style={{ fontSize: 18, fontWeight: 700, color: C.textDim, lineHeight: 1 }}>
+                          {day.peakScore}
+                        </span>
+                        <span style={{ fontSize: 9, color: C.textDim }}>{fmt24(day.peakHour)}</span>
+                      </div>
+                      <div style={{ fontSize: 8, color: C.textDim, marginTop: 2, letterSpacing: '0.02em' }}>
+                        {String(day.startHour).padStart(2,'0')}–{String(day.endHour).padStart(2,'0')}
+                      </div>
+                    </div>
+                    <DayBars windows={day.allWindows} height={26} dim={true} nowHour={nowHour} isToday={false} />
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: 14, lineHeight: 1 }}>{displayRating.emoji}</div>
+                      <div style={{
+                        fontSize: 9, fontWeight: 600, color: displayRating.color,
+                        letterSpacing: '0.04em', marginTop: 2,
+                      }}>
+                        {displayRating.label}
+                      </div>
+                    </div>
+                    <span />
+                  </div>
+                  {/* Lock overlay */}
+                  <div style={{
+                    position: 'absolute', inset: 0,
+                    background: 'rgba(6,6,15,0.50)',
+                    backdropFilter: 'blur(2px)', WebkitBackdropFilter: 'blur(2px)',
+                    display: 'flex', alignItems: 'center',
+                    paddingLeft: 18,
+                    zIndex: 3, cursor: 'pointer',
+                  }} onClick={onUnlock}>
+                    <Lock size={28} color={C.goldDim} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* RIGHT: free card (top) + paid card (bottom) */}
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 12 }}>
+
+            {/* Card 1: Free tier */}
+            <div style={{
+              border: `1px solid ${C.border}`,
+              borderRadius: 12,
+              padding: '18px 22px',
+              background: 'rgba(32,197,160,0.04)',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                <span style={{ fontSize: 18 }}>🎁</span>
+                <span style={{ fontSize: 14, fontWeight: 700, color: C.emerald, letterSpacing: '0.03em' }}>
+                  Your 3-Day Golden Hours Are Unlocked — Free
+                </span>
+              </div>
+              <p style={{ fontSize: 13, color: C.textMid, lineHeight: '20px', margin: 0 }}>
+                No payment needed. Come back tomorrow and your next 3-day package unlocks automatically.
+                Keep visiting daily to always have fresh results.
+              </p>
+            </div>
+
+            {/* Card 2: Paid unlock CTA */}
+            <div style={{
+              border: `1px solid ${C.borderPeak}`,
+              borderRadius: 12,
+              padding: '20px 22px',
+              background: 'linear-gradient(135deg, rgba(244,161,29,0.06) 0%, rgba(244,161,29,0.02) 100%)',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+                <Lock size={16} color={C.gold} />
+                <span style={{ fontSize: 15, fontWeight: 700, color: C.gold, letterSpacing: '0.04em' }}>
+                  Unlock Your Golden Hours
+                </span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 9, marginBottom: 18 }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                  <span style={{ color: C.emerald, fontSize: 14, lineHeight: '20px', flexShrink: 0 }}>✦</span>
+                  <span style={{ fontSize: 13, color: C.text, lineHeight: '20px' }}>
+                    No more 3-day limit or repetitive visits
+                  </span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                  <span style={{ color: C.emerald, fontSize: 14, lineHeight: '20px', flexShrink: 0 }}>✦</span>
+                  <span style={{ fontSize: 13, color: C.text, lineHeight: '20px' }}>
+                    Schedule your work <strong style={{ color: C.gold }}>ahead of time</strong> — no last-minute rush
+                  </span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                  <span style={{ color: C.emerald, fontSize: 14, lineHeight: '20px', flexShrink: 0 }}>✦</span>
+                  <span style={{ fontSize: 13, color: C.text, lineHeight: '20px' }}>
+                    <strong style={{ color: C.gold }}>90 days</strong> of personalised timing — see your opportunities & calculate SWOT analysis
+                  </span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                  <span style={{ color: C.emerald, fontSize: 14, lineHeight: '20px', flexShrink: 0 }}>✦</span>
+                  <span style={{ fontSize: 13, color: C.text, lineHeight: '20px' }}>
+                    One-time <strong style={{ color: C.gold }}>$0.99</strong> — unlock all services, all days, no subscription, surf as you want
+                  </span>
+                </div>
+              </div>
+              <div style={{ textAlign: 'center' }}>
+                <button
+                  onClick={onUnlock}
+                  style={{
+                    background: 'linear-gradient(135deg, #F4A11D 0%, #D4A84B 100%)',
+                    border: 'none',
+                    color: '#0A0A1A', cursor: 'pointer',
+                    fontFamily: FONT,
+                    fontSize: 13, fontWeight: 800,
+                    letterSpacing: '0.08em', textTransform: 'uppercase',
+                    padding: '11px 30px', borderRadius: 24,
+                    boxShadow: '0 4px 16px rgba(244,161,29,0.3)',
+                    transition: 'all 0.2s',
+                  }}
+                  onMouseEnter={(e) => { (e.target as HTMLButtonElement).style.boxShadow = '0 4px 24px rgba(244,161,29,0.5)'; }}
+                  onMouseLeave={(e) => { (e.target as HTMLButtonElement).style.boxShadow = '0 4px 16px rgba(244,161,29,0.3)'; }}
+                >
+                  ✦ Unlock Now — $0.99
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Status footer */}
       <div style={{ marginTop: 12, fontSize: 10, color: C.textDim, textAlign: 'center', lineHeight: 1.6 }}>
         {unlockedDays >= 90
           ? '✦ Full 90-day access active'
-          : <>
-              Free preview · {unlockedDays} days unlocked ·{' '}
-              <span style={{ color: C.gold, cursor: 'pointer', fontWeight: 600 }} onClick={onUnlock}>
-                ✦ Unlock Your Golden Hours
-              </span>
-            </>
+          : `Free preview · ${unlockedDays} days unlocked`
         }
       </div>
     </div>

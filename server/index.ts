@@ -93,10 +93,12 @@ app.use('/api/stripe/webhook', express.raw({ type: 'application/json' }));
 app.use(express.json());
 app.disable('x-powered-by');
 
-// Security headers
-app.use((_req, res, next) => {
+// Security headers (skip X-Frame-Options for /__/auth/ — Firebase needs iframes)
+app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('X-Frame-Options', 'DENY');
+  if (!req.path.startsWith('/__/auth')) {
+    res.setHeader('X-Frame-Options', 'DENY');
+  }
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   res.setHeader('Permissions-Policy', 'geolocation=(self)');
   next();
@@ -107,8 +109,8 @@ app.use(express.static(DIST, {
   maxAge: '1y',
   etag: true,
   setHeaders: (res, filePath) => {
-    // Never cache index.html — new deploys must propagate immediately
-    if (filePath.endsWith('index.html')) {
+    // Never cache index.html or sw.js — new deploys must propagate immediately
+    if (filePath.endsWith('index.html') || filePath.endsWith('sw.js')) {
       res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     }
   },

@@ -277,6 +277,7 @@ export function getWeeklyWindows(
   lng: number,
   startDate: Date,
   service: ServiceId = 'yoga',
+  days: number = 7,
 ): HourWindow[] {
 
   // ── Natal chart — computed once ────────────────────────────────────────
@@ -313,7 +314,7 @@ export function getWeeklyWindows(
 
   const windows: HourWindow[] = [];
 
-  for (let dayOffset = 0; dayOffset < 7; dayOffset++) {
+  for (let dayOffset = 0; dayOffset < days; dayOffset++) {
     const dayDate = new Date(startDate);
     dayDate.setDate(startDate.getDate() + dayOffset);
     dayDate.setHours(0, 0, 0, 0);

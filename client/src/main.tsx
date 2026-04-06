@@ -7,7 +7,9 @@ import './index.css';
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', async () => {
     try {
-      const reg = await navigator.serviceWorker.register('/sw.js');
+      const reg = await navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' });
+      // Force check for updates on every page load
+      reg.update();
       console.log('[sw] registered, scope:', reg.scope);
     } catch (e) {
       console.warn('[sw] registration failed:', e);

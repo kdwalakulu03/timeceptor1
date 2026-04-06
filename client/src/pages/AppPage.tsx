@@ -16,7 +16,6 @@ import { geocodeCity } from '../lib/geocoding';
 import { HourWindow } from '../types';
 import { Background } from '../components/Background';
 import { Hero } from '../components/Hero';
-import { WeeklyView } from '../components/WeeklyView';
 import { CosmicForm } from '../components/CosmicForm';
 import { ResultsDisplay } from '../components/ResultsDisplay';
 import { Legend } from '../components/Legend';
@@ -68,6 +67,17 @@ export default function AppPage() {
           });
           const profile = await res.json();
           if (profile.telegramChatId) setTelegramLinked(true);
+
+          // Paid user with birth data on file → send straight to dashboard
+          // (skip if URL has ?dob= share-link params)
+          const hasShareParams = new URLSearchParams(window.location.search).has('dob');
+          if (!hasShareParams && profile.birthDate && profile.paidUntil) {
+            const isPaid = new Date(profile.paidUntil).getTime() > Date.now();
+            if (isPaid) {
+              navigate('/dashboard', { replace: true });
+              return;
+            }
+          }
         } catch (e) { console.warn('[users/sync]', e); }
         try {
           const r = await fetch('/api/telegram/info');
@@ -81,15 +91,9 @@ export default function AppPage() {
   const [subscribed, setSubscribed] = useState(false);
   const [email, setEmail] = useState('');
   const [showTraditional, setShowTraditional] = useState(false);
-  const [ctaDismissed, setCtaDismissed] = useState(false);
+  const [navigatingToDash, setNavigatingToDash] = useState(false);
   const ctaRef = React.useRef<HTMLDivElement>(null);
   const resultsRef = React.useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (ctaDismissed && resultsRef.current) {
-      setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
-    }
-  }, [ctaDismissed]);
 
   // ── URL params for share links ──────────────────────────────────────────
   useEffect(() => {
@@ -228,7 +232,43 @@ export default function AppPage() {
       console.log(`[precalc] ${d.fromCache ? 'cache hit' : `stored ${d.stored} windows`}`);
     }).catch(e => console.warn('[precalc]', e));
 
+    // Persist birth data to user profile (so dashboard can auto-load next time)
+    if (user && token) {
+      fetch('/api/users/me', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          birthDate: dob, birthTime: finalTob,
+          lat: coords.lat, lng: coords.lng,
+          locationName: location,
+        }),
+      }).catch(() => {});
+    }
+
     setTimeout(() => ctaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+  };
+
+  // Navigate to dashboard after ensuring birth data is saved
+  const goToDashboard = async () => {
+    setNavigatingToDash(true);
+    try {
+      if (user) {
+        const token = await user.getIdToken();
+        // Ensure birth data is persisted before navigating
+        await fetch('/api/users/me', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({
+            birthDate: dob, birthTime: unknownTime ? '12:00' : (tob || '12:00'),
+            lat: coords.lat, lng: coords.lng,
+            locationName: location,
+          }),
+        }).catch(() => {});
+      }
+      navigate('/dashboard');
+    } catch {
+      navigate('/dashboard');
+    }
   };
 
   const handleSubscribe = async (e: React.FormEvent) => {
@@ -345,69 +385,26 @@ export default function AppPage() {
               isAuthed={!!user}
             />
 
-            {/* CTA gate */}
-            {weeklyWindows.length > 0 && !ctaDismissed && (
+            {/* CTA gate — after calculation, show notification CTA + redirect to dashboard */}
+            {weeklyWindows.length > 0 && (
               <div ref={ctaRef} style={{ marginTop: 34 }}>
                 <NotificationCTA botUsername={botUsername} uid={user?.uid ?? null} telegramLinked={telegramLinked} />
                 <div style={{ textAlign: 'center', marginTop: 21 }}>
                   <button
-                    onClick={() => setCtaDismissed(true)}
-                    className="px-6 py-3 bg-gold text-space-bg font-bold uppercase tracking-widest text-sm rounded-full shadow-[0_0_15px_rgba(212,168,75,0.5)] hover:shadow-[0_0_30px_rgba(212,168,75,0.8)] transition-all animate-pulse cursor-pointer"
+                    onClick={goToDashboard}
+                    disabled={navigatingToDash}
+                    className="px-8 py-4 bg-gold text-space-bg font-bold uppercase tracking-widest text-sm rounded-full shadow-[0_0_15px_rgba(212,168,75,0.5)] hover:shadow-[0_0_30px_rgba(212,168,75,0.8)] transition-all cursor-pointer disabled:opacity-60"
                   >
-                    ✅ Your Results Are Ready — View Golden Hour
+                    {navigatingToDash ? (
+                      <span className="flex items-center gap-3">
+                        <span className="w-4 h-4 border-2 border-space-bg/40 border-t-space-bg rounded-full animate-spin" />
+                        Loading Your Dashboard…
+                      </span>
+                    ) : (
+                      '✦ View My Golden Hours'
+                    )}
                   </button>
                 </div>
-              </div>
-            )}
-
-            {/* Weekly results */}
-            {weeklyWindows.length > 0 && ctaDismissed && (
-              <div ref={resultsRef}>
-                <div style={{ marginTop: 21 }}>
-                  <WeeklyView
-                    windows={weeklyWindows} unlockedDays={3}
-                    onUnlock={async () => {
-                      let currentUser = user;
-                      if (!currentUser) {
-                        try { currentUser = await signInWithGoogle(); } catch { return; }
-                      }
-                      try {
-                        const token = await currentUser.getIdToken();
-                        const res = await fetch('/api/stripe/create-checkout', {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                        });
-                        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                        const data = await res.json();
-                        if (data.url) {
-                          window.location.href = data.url;
-                        } else if (data.alreadyPaid) {
-                          navigate('/dashboard');
-                        } else {
-                          alert('Something went wrong — please try again.');
-                        }
-                      } catch (e) {
-                        console.warn('[stripe]', e);
-                        alert('Could not connect to payment server. Please try again later.');
-                      }
-                    }}
-                    user={user} selectedService={selectedService}
-                  />
-                </div>
-
-                {/* Go to dashboard prompt */}
-                {user && (
-                  <div className="mt-6 text-center">
-                    <Link
-                      to="/dashboard"
-                      className="inline-block px-6 py-3 border border-gold/30 text-gold font-mono text-xs tracking-widest uppercase hover:bg-gold/10 transition-all rounded-sm"
-                    >
-                      Go to Dashboard →
-                    </Link>
-                  </div>
-                )}
-
-                <NotificationCTA botUsername={botUsername} uid={user?.uid ?? null} telegramLinked={telegramLinked} />
               </div>
             )}
 
