@@ -15,6 +15,7 @@ import { getWeeklyWindows } from '../lib/scoring';
 import { geocodeCity } from '../lib/geocoding';
 import { HourWindow } from '../types';
 import { Background } from '../components/Background';
+import { HowItWorksModal } from '../components/HowItWorksModal';
 import { Hero } from '../components/Hero';
 import { CosmicForm } from '../components/CosmicForm';
 import { ResultsDisplay } from '../components/ResultsDisplay';
@@ -33,6 +34,7 @@ export default function AppPage() {
   const [coords, setCoords] = useState(DEFAULT_COORDS);
   const [coordsResolved, setCoordsResolved] = useState(false);
   const [geocodeStatus, setGeocodeStatus] = useState<'idle' | 'loading' | 'found' | 'error'>('idle');
+  const [hiwOpen, setHiwOpen] = useState(false);
   const [selectedService, setSelectedService] = useState<ServiceId>('yoga');
 
   const [chart, setChart] = useState<ChartData | null>(null);
@@ -285,28 +287,40 @@ export default function AppPage() {
       <Background />
 
       {/* Navigation — mobile-friendly */}
-      <nav className="relative z-10 flex justify-between items-center px-4 sm:px-6 py-5 md:px-12 md:py-8 border-b border-gold/10">
-        <Link to="/" className="text-xl sm:text-2xl tracking-widest uppercase text-gold font-display font-semibold hover:text-gold-light transition-colors">
-          Timeceptor
+      <nav className="relative z-10 flex justify-between items-center px-4 sm:px-6 py-1 md:px-12 md:py-3 border-b border-gold/10">
+        <Link to="/" className="flex items-center gap-2 sm:gap-3 hover:opacity-90 transition-opacity">
+          <img src="/logo.png" alt="" className="h-10 w-10 sm:h-20 sm:w-20 object-contain drop-shadow-[0_0_20px_rgba(244,161,29,0.6)]" />
+          <div className="flex flex-col">
+            <span className="text-xl sm:text-2xl tracking-widest uppercase text-gold font-display font-semibold">Timeceptor</span>
+            <a href="https://timecept.com" target="_blank" rel="noopener noreferrer" className="font-mono text-[9px] sm:text-[10px] tracking-widest text-cream-dim/50 hover:text-gold/70 transition-colors">by timecept.com</a>
+          </div>
         </Link>
-        <div className="flex items-center gap-3 sm:gap-6">
+        <div className="flex items-center gap-2 sm:gap-3">
           {user && (
-            <Link to="/dashboard" className="hidden sm:block font-mono text-xs text-cream-dim tracking-widest uppercase hover:text-gold transition-colors">
-              Dashboard
+            <>
+            <Link to="/dashboard" className="hidden sm:flex items-center gap-2 font-mono text-sm text-cream-dim tracking-widest uppercase border-2 border-gold/35 rounded-full px-5 py-2.5 hover:border-gold/70 hover:text-gold hover:bg-gold/5 transition-all">
+              My Cosmos
             </Link>
+            <Link to="/decide" className="hidden sm:flex items-center gap-2 font-mono text-sm text-cream-dim tracking-widest uppercase border-2 border-gold/35 rounded-full px-5 py-2.5 hover:border-gold/70 hover:text-gold hover:bg-gold/5 transition-all">
+              🎯 Act or Wait?
+            </Link>
+            <Link to="/plans" className="hidden sm:flex items-center gap-2 font-mono text-sm text-cream-dim tracking-widest uppercase border-2 border-gold/35 rounded-full px-5 py-2.5 hover:border-gold/70 hover:text-gold hover:bg-gold/5 transition-all">
+              📋 Life Blueprints
+            </Link>
+            </>
           )}
 
           {user ? (
             <div className="relative">
               <button
                 onClick={() => setUserMenuOpen(o => !o)}
-                className="flex items-center gap-2 border border-gold/20 rounded-sm px-2 sm:px-3 py-1.5 hover:border-gold/40 transition-colors"
+                className="flex items-center gap-2 rounded-full p-1 hover:bg-gold/5 transition-all"
               >
                 {user.photoURL
-                  ? <img src={user.photoURL} alt="" className="w-6 h-6 rounded-full" />
-                  : <span className="w-6 h-6 rounded-full bg-gold/20 flex items-center justify-center text-gold text-xs font-bold">{(user.displayName ?? user.email ?? 'U')[0].toUpperCase()}</span>
+                  ? <img src={user.photoURL} alt="" className="w-9 h-9 rounded-full ring-2 ring-gold/45 ring-offset-2 ring-offset-[#07071a]" />
+                  : <span className="w-9 h-9 rounded-full bg-gradient-to-br from-gold/35 to-gold/10 ring-2 ring-gold/45 ring-offset-2 ring-offset-[#07071a] flex items-center justify-center text-gold text-base font-semibold font-display">{(user.displayName ?? user.email ?? 'U')[0].toUpperCase()}</span>
                 }
-                <span className="hidden sm:block font-mono text-xs text-cream-dim tracking-widest truncate max-w-[120px]">
+                <span className="hidden sm:block font-mono text-sm text-cream-dim tracking-widest truncate max-w-[140px]">
                   {user.displayName ?? user.email}
                 </span>
               </button>
@@ -317,7 +331,21 @@ export default function AppPage() {
                     onClick={() => setUserMenuOpen(false)}
                     className="block w-full text-left px-4 py-3 font-mono text-xs tracking-widest uppercase text-cream-dim hover:text-gold hover:bg-gold/5 transition-colors border-b border-gold/10"
                   >
-                    Dashboard
+                    My Cosmos
+                  </Link>
+                  <Link
+                    to="/decide"
+                    onClick={() => setUserMenuOpen(false)}
+                    className="block w-full text-left px-4 py-3 font-mono text-xs tracking-widest uppercase text-cream-dim hover:text-gold hover:bg-gold/5 transition-colors border-b border-gold/10"
+                  >
+                    🎯 Act or Wait?
+                  </Link>
+                  <Link
+                    to="/plans"
+                    onClick={() => setUserMenuOpen(false)}
+                    className="block w-full text-left px-4 py-3 font-mono text-xs tracking-widest uppercase text-cream-dim hover:text-gold hover:bg-gold/5 transition-colors border-b border-gold/10"
+                  >
+                    📋 Life Blueprints
                   </Link>
                   {botUsername && (
                     <a
@@ -442,11 +470,15 @@ export default function AppPage() {
           Timeceptor
         </Link>
         <div className="flex flex-col md:flex-row items-center gap-3 sm:gap-4 font-mono text-xs sm:text-sm text-cream-dim tracking-widest uppercase">
-          <a href="https://timecept.com" className="hover:text-gold transition-colors">timecept.com</a>
+          <button onClick={() => setHiwOpen(true)} className="hover:text-gold transition-colors">⚙️ How It Works</button>
           <span className="hidden md:inline opacity-30">·</span>
-          <span>Ancient timing · Modern life · © 2026</span>
+          <a href="https://timecept.com" target="_blank" rel="noopener noreferrer" className="hover:text-gold transition-colors">timecept.com</a>
+          <span className="hidden md:inline opacity-30">·</span>
+          <span>© 2026</span>
         </div>
       </footer>
+
+      <HowItWorksModal open={hiwOpen} onClose={() => setHiwOpen(false)} />
     </div>
   );
 }

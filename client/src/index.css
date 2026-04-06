@@ -50,3 +50,21 @@
     scrollbar-width: none;
   }
 }
+
+/* Action Plan tab glow animation */
+@keyframes tab-glow {
+  0%, 100% { box-shadow: 0 0 6px rgba(244, 161, 29, 0.3), 0 0 14px rgba(244, 161, 29, 0.1); }
+  50% { box-shadow: 0 0 12px rgba(244, 161, 29, 0.6), 0 0 28px rgba(244, 161, 29, 0.25); }
+}
+.tab-glow {
+  animation: tab-glow 2s ease-in-out infinite;
+}
+
+/* Download button bounce-glow */
+@keyframes dl-bounce {
+  0%, 100% { transform: translateY(0); box-shadow: 0 0 8px rgba(244, 161, 29, 0.25); }
+  50% { transform: translateY(-2px); box-shadow: 0 0 18px rgba(244, 161, 29, 0.55); }
+}
+.dl-bounce {
+  animation: dl-bounce 1.8s ease-in-out infinite;
+}

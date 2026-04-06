@@ -267,6 +267,162 @@ function getSiderealLong(body: Astronomy.Body, date: Date, lat: number, lng: num
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// § 8b. BIO-RHYTHMIC CYCLE LAYER (proprietary overlay)
+// ═══════════════════════════════════════════════════════════════════════════════
+// 5 cycle states (0-4): Eat=0(active), Walk=1(moderate), Rule=2(peak),
+//                        Sleep=3(dormant), Dead=4(powerless)
+// Determined by: birth nakshatra → cycle bird (0-4),
+//   day-of-week grouping, yamam (1 of 5 per half-day), lunar phase.
+// Score contribution normalised to ±12 pts on the 0-100 scale.
+
+type BioAct = 0|1|2|3|4;
+const BIO_SCORES: Record<BioAct, number> = { 0:12, 1:6, 2:20, 3:-6, 4:-14 };
+
+// Birth Moon nakshatra → cycle bird index (0=V,1=O,2=C,3=R,4=P)
+function moonToBird(moonSidLng: number): number {
+  const nak = Math.floor(((moonSidLng % 360) + 360) % 360 / (360 / 27)) % 27;
+  if (nak < 5) return 0;
+  if (nak < 10) return 1;
+  if (nak < 15) return 2;
+  if (nak < 20) return 3;
+  return 4;
+}
+
+// Day-of-week grouping (JS getDay: 0=Sun)
+function bioDayGroup(dow: number, isNight: boolean): string {
+  if (isNight) {
+    if (dow === 0 || dow === 2) return 'st';  // Sun,Tue
+    if (dow === 3) return 'w';                 // Wed
+    if (dow === 4) return 'h';                 // Thu
+    if (dow === 5) return 'f';                 // Fri
+    return 'ms';                               // Mon,Sat
+  }
+  if (dow === 0 || dow === 2) return 'st';     // Sun,Tue
+  if (dow === 1 || dow === 3) return 'mw';     // Mon,Wed
+  if (dow === 4) return 'h';                   // Thu
+  if (dow === 5) return 'f';                   // Fri
+  return 's';                                  // Sat
+}
+
+// Yamam sequences: key = dayGroup, value = [bird0_seq, bird1_seq, ..., bird4_seq]
+// Each bird_seq = [yamam1_act, ..., yamam5_act]
+// Day sequences
+const BD: Record<string, BioAct[][]> = {
+  st: [[0,1,2,3,4],[1,2,3,4,0],[2,3,4,0,1],[3,4,0,1,2],[4,0,1,2,3]],
+  mw: [[4,0,1,2,3],[0,1,2,3,4],[1,2,3,4,0],[2,3,4,0,1],[3,4,0,1,2]],
+  h:  [[3,4,0,1,2],[4,0,1,2,3],[0,1,2,3,4],[1,2,3,4,0],[2,3,4,0,1]],
+  f:  [[2,3,4,0,1],[3,4,0,1,2],[4,0,1,2,3],[0,1,2,3,4],[1,2,3,4,0]],
+  s:  [[1,2,3,4,0],[2,3,4,0,1],[3,4,0,1,2],[4,0,1,2,3],[0,1,2,3,4]],
+};
+// Night sequences
+const BN: Record<string, BioAct[][]> = {
+  st: [[1,0,4,3,2],[4,3,2,1,0],[2,1,0,4,3],[0,4,3,2,1],[3,2,1,0,4]],
+  w:  [[4,3,2,1,0],[2,1,0,4,3],[0,4,3,2,1],[3,2,1,0,4],[1,0,4,3,2]],
+  h:  [[2,1,0,4,3],[0,4,3,2,1],[3,2,1,0,4],[1,0,4,3,2],[4,3,2,1,0]],
+  f:  [[0,4,3,2,1],[3,2,1,0,4],[1,0,4,3,2],[4,3,2,1,0],[2,1,0,4,3]],
+  ms: [[3,2,1,0,4],[1,0,4,3,2],[4,3,2,1,0],[2,1,0,4,3],[0,4,3,2,1]],
+};
+
+// Sub-period durations per lunar phase (minutes within 144-min yamam)
+// Index = BioAct (0=Eat..4=Dead)
+const BIO_SUB: Record<string, number[]> = {
+  sd: [24,30,48,18,24], // Shukla day
+  sn: [30,30,24,24,36], // Shukla night
+  kd: [48,36,18,12,30], // Krishna day
+  kn: [42,42,18,18,24], // Krishna night
+};
+
+// Death / Ruling day tables: bird → JS weekdays (0=Sun)
+// Shukla Paksha (waxing)
+const S_DEATH: number[][] = [[4,6],[0,5],[1],[2],[3]];       // V,O,C,R,P
+const S_RULE:  number[][] = [[0,2],[1,3],[4],[5],[6]];
+// Krishna Paksha (waning)
+const K_DEATH: number[][] = [[2],[1],[0],[4,6],[3,5]];
+const K_RULE:  number[][] = [[5],[4],[3],[0,2],[1,6]];
+
+// Simplified lunar phase (Shukla = waxing)
+function isShukla(dt: Date): boolean {
+  const phase = Astronomy.MoonPhase(Astronomy.MakeTime(dt));
+  return phase < 180; // 0=new→180=full = waxing
+}
+
+/**
+ * Compute bio-rhythmic cycle score for a given bird + datetime.
+ * Returns a value in range ~ -31 to +38, to be normalised.
+ */
+function bioScore(
+  bird: number, dow: number, hour: number, minute: number,
+  sunriseH: number, sunsetH: number, shukla: boolean,
+): number {
+  const totalMin = hour * 60 + minute;
+  const srMin = sunriseH * 60;
+  const ssMin = sunsetH * 60;
+  const dayLen = ssMin - srMin;
+  const nightLen = 1440 - dayLen;
+  const dayYamam = dayLen / 5;
+  const nightYamam = nightLen / 5;
+
+  let yamam: number;
+  let isNight: boolean;
+  let minuteInYamam: number;
+
+  if (totalMin >= srMin && totalMin < ssMin) {
+    isNight = false;
+    const elapsed = totalMin - srMin;
+    yamam = Math.min(Math.floor(elapsed / dayYamam), 4);
+    minuteInYamam = Math.floor(elapsed - yamam * dayYamam);
+  } else if (totalMin >= ssMin) {
+    isNight = true;
+    const elapsed = totalMin - ssMin;
+    yamam = Math.min(Math.floor(elapsed / nightYamam), 4);
+    minuteInYamam = Math.floor(elapsed - yamam * nightYamam);
+  } else {
+    isNight = true;
+    const elapsed = totalMin + (1440 - ssMin);
+    yamam = Math.min(Math.floor(elapsed / nightYamam), 4);
+    minuteInYamam = Math.floor(elapsed - yamam * nightYamam);
+  }
+  minuteInYamam = Math.max(0, Math.min(minuteInYamam, 143));
+
+  // Primary activity for this yamam
+  const group = bioDayGroup(dow, isNight);
+  const seqTable = isNight ? BN[group] : BD[group];
+  if (!seqTable) return 0;
+  const primary = seqTable[bird]?.[yamam] as BioAct ?? 0;
+
+  // Sub-period activity
+  const subKey = (shukla ? 's' : 'k') + (isNight ? 'n' : 'd');
+  const subDur = BIO_SUB[subKey];
+  const subOrder: BioAct[] = [];
+  for (let i = 0; i < 5; i++) subOrder.push(((primary + i) % 5) as BioAct);
+
+  let elapsed2 = 0;
+  let subAct: BioAct = subOrder[4];
+  for (const act of subOrder) {
+    const d = subDur[act];
+    if (elapsed2 + d > minuteInYamam) { subAct = act; break; }
+    elapsed2 += d;
+  }
+
+  const base = BIO_SCORES[primary];
+  const sub = Math.round(BIO_SCORES[subAct] * 0.5);
+
+  // Death/Ruling day bonus
+  const deathDays = shukla ? S_DEATH[bird] : K_DEATH[bird];
+  const ruleDays = shukla ? S_RULE[bird] : K_RULE[bird];
+  let dayBonus = 0;
+  if (ruleDays?.includes(dow)) dayBonus = 8;
+  else if (deathDays?.includes(dow)) dayBonus = -10;
+
+  return base + sub + dayBonus;
+}
+
+/** Normalise raw bio score (-31..+38) → (-12..+12) */
+function normaliseBio(raw: number): number {
+  return Math.round(((raw + 31) / 69) * 24 - 12);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // § 9. MAIN EXPORT — getWeeklyWindows
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -295,6 +451,12 @@ export function getWeeklyWindows(
   const horaTable = SERVICE_HORA_MAP[service] ?? HORA_DEFAULT;
   const targets = SERVICE_NATAL_TARGETS[service];
   const nkAffinity = NAKSHATRA_ACTIVITY_AFFINITY[service] ?? [];
+
+  // ── Bio-rhythmic cycle: birth bird from Moon nakshatra ─────────────────
+  const natalMoonLong = natalLongs['moon'] ?? 0;
+  const birthBird = moonToBird(natalMoonLong);
+  // Lunar phase (recomputed per day in the loop)
+  let cachedShukla = isShukla(startDate);
 
   // ── Jupiter transit (slow — compute once for the week) ─────────────────
   const tJupiter = getSiderealLong(Astronomy.Body.Jupiter, startDate, lat, lng, ayanamsa);
@@ -330,6 +492,8 @@ export function getWeeklyWindows(
     }
 
     const sunriseHour = sunrise.getHours();
+    const sunsetHour = Math.min(sunriseHour + 12, 19); // approximate sunset
+    cachedShukla = isShukla(dayDate); // refresh lunar phase per day
     const dayOfWeek = dayDate.getDay();
     const startPlanetIdx = CHALDEAN_HOUR_SEQUENCE.indexOf(dayOfWeek);
 
@@ -441,6 +605,11 @@ export function getWeeklyWindows(
       } else {
         if (actualHour >= 5 && actualHour <= 8) score += 4; // Dawn
       }
+
+      // ── 8b. Bio-rhythmic cycle (Pancha Pakshi overlay) ────────────
+      const bioRaw = bioScore(birthBird, dayOfWeek, actualHour, 0,
+        sunriseHour, sunsetHour, cachedShukla);
+      score += normaliseBio(bioRaw);
 
       // Clamp
       score = Math.max(0, Math.min(100, score));

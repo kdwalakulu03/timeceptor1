@@ -8,6 +8,8 @@ import LandingPage from './pages/LandingPage';
 import AppPage from './pages/AppPage';
 import DashboardPage from './pages/DashboardPage';
 import SwotPage from './pages/SwotPage';
+import DecidePage from './features/decide/DecidePage';
+import PlansPage from './features/plans/PlansPage';
 
 export default function App() {
   return (
@@ -17,6 +19,8 @@ export default function App() {
         <Route path="/app" element={<AppPage />} />
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/swot" element={<SwotPage />} />
+        <Route path="/decide" element={<DecidePage />} />
+        <Route path="/plans" element={<PlansPage />} />
         {/* Fallback — send unknowns to landing */}
         <Route path="*" element={<LandingPage />} />
       </Routes>

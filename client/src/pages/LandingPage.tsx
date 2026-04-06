@@ -8,24 +8,56 @@ import { Link } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { Background } from '../components/Background';
 import ModernExplainer from '../components/modern-explainer/ModernExplainer';
+import { HowItWorksModal } from '../components/HowItWorksModal';
 
 export default function LandingPage() {
+  const [hiwOpen, setHiwOpen] = React.useState(false);
 
   return (
     <div className="relative min-h-screen selection:bg-gold/30 selection:text-gold-light">
       <Background />
 
       {/* Nav — minimal */}
-      <nav className="relative z-10 flex justify-between items-center px-4 sm:px-6 py-4 md:px-12 md:py-5 border-b border-gold/10">
-        <a href="/" className="text-lg sm:text-xl tracking-widest uppercase text-gold font-display font-semibold hover:text-gold-light transition-colors">
-          Timeceptor
+      <nav className="relative z-10 flex justify-between items-center px-4 sm:px-6 py-1 md:px-12 md:py-3 border-b border-gold/10">
+        <a href="/" className="flex items-center gap-2 sm:gap-3 hover:opacity-90 transition-opacity">
+          <img src="/logo.png" alt="" className="h-10 w-10 sm:h-20 sm:w-20 object-contain drop-shadow-[0_0_20px_rgba(244,161,29,0.6)]" />
+          <div className="flex flex-col">
+            <span className="text-xl sm:text-2xl tracking-widest uppercase text-gold font-display font-semibold">Timeceptor</span>
+            <a href="https://timecept.com" target="_blank" rel="noopener noreferrer" className="font-mono text-[9px] sm:text-[10px] tracking-widest text-cream-dim/50 hover:text-gold/70 transition-colors">by timecept.com</a>
+          </div>
         </a>
         <Link
           to="/app"
-          className="px-5 py-2.5 sm:px-6 sm:py-3 bg-gold text-space-bg font-bold uppercase tracking-widest text-xs sm:text-sm rounded-full shadow-[0_0_15px_rgba(212,168,75,0.5)] hover:shadow-[0_0_30px_rgba(212,168,75,0.8)] transition-all animate-pulse"
+          className="sm:hidden px-4 py-2 bg-gold text-space-bg font-bold uppercase tracking-widest text-[10px] rounded-full shadow-[0_0_12px_rgba(212,168,75,0.4)]"
         >
-          Check Your Golden Hour
+          Get Started
         </Link>
+        <div className="hidden sm:flex items-center gap-1.5 sm:gap-2 flex-wrap justify-end">
+          <Link
+            to="/app"
+            className="px-3 py-2 sm:px-5 sm:py-2.5 bg-emerald-600 text-white font-bold uppercase tracking-widest text-[9px] sm:text-[10px] rounded-full shadow-[0_0_14px_rgba(16,185,129,0.4)] hover:shadow-[0_0_28px_rgba(16,185,129,0.65)] hover:scale-105 transition-all"
+          >
+            🎯 Act Now or Wait?
+          </Link>
+          <Link
+            to="/app"
+            className="px-3 py-2 sm:px-5 sm:py-2.5 bg-indigo-500 text-white font-bold uppercase tracking-widest text-[9px] sm:text-[10px] rounded-full shadow-[0_0_14px_rgba(99,102,241,0.4)] hover:shadow-[0_0_28px_rgba(99,102,241,0.65)] hover:scale-105 transition-all"
+          >
+            ✦ SWOT Analysis
+          </Link>
+          <Link
+            to="/app"
+            className="px-3 py-2 sm:px-5 sm:py-2.5 bg-purple-600 text-white font-bold uppercase tracking-widest text-[9px] sm:text-[10px] rounded-full shadow-[0_0_14px_rgba(147,51,234,0.4)] hover:shadow-[0_0_28px_rgba(147,51,234,0.65)] hover:scale-105 transition-all"
+          >
+            📋 Life Blueprints
+          </Link>
+          <Link
+            to="/app"
+            className="px-3 py-2 sm:px-5 sm:py-2.5 bg-gold text-space-bg font-bold uppercase tracking-widest text-[9px] sm:text-[10px] rounded-full shadow-[0_0_18px_rgba(212,168,75,0.55)] hover:shadow-[0_0_32px_rgba(212,168,75,0.85)] hover:scale-105 transition-all animate-pulse"
+          >
+            ⏰ Golden Hour
+          </Link>
+        </div>
       </nav>
 
       <main className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6">
@@ -57,7 +89,7 @@ export default function LandingPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.1 }}
-              className="text-4xl sm:text-5xl md:text-6xl font-display font-semibold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-cream via-gold-light to-gold"
+              className="text-3xl sm:text-5xl md:text-6xl font-display font-semibold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-cream via-gold-light to-gold"
             >
               How Timeceptor Works
             </motion.h2>
@@ -109,12 +141,20 @@ export default function LandingPage() {
             ))}
           </div>
 
-          <Link
-            to="/app"
-            className="inline-block px-8 sm:px-12 py-4 sm:py-5 bg-gold text-space-bg font-mono text-sm font-bold tracking-widest uppercase hover:bg-gold-light transition-all shadow-lg shadow-gold/20 rounded-sm"
-          >
-            ✦ Reveal My Cosmic Window — Free
-          </Link>
+          <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4">
+            <Link
+              to="/app"
+              className="w-full sm:w-auto text-center px-6 sm:px-12 py-3 sm:py-5 bg-gold text-space-bg font-mono text-xs sm:text-sm font-bold tracking-widest uppercase hover:bg-gold-light transition-all shadow-lg shadow-gold/20 rounded-sm"
+            >
+              ✦ Reveal My Cosmic Window — Free
+            </Link>
+            <Link
+              to="/app"
+              className="w-full sm:w-auto text-center px-6 sm:px-12 py-3 sm:py-5 bg-indigo-500 text-white font-mono text-xs sm:text-sm font-bold tracking-widest uppercase hover:bg-indigo-400 transition-all shadow-lg shadow-indigo-500/25 rounded-sm"
+            >
+              ✦ SWOT Analysis About You
+            </Link>
+          </div>
           <p className="mt-3 font-mono text-[10px] sm:text-xs text-cream-dim/50 tracking-wider">
             No card · 3-day full access · Personalized to your birth chart
           </p>
@@ -147,10 +187,16 @@ export default function LandingPage() {
         <a href="/" className="text-sm tracking-widest uppercase text-gold font-semibold hover:text-gold-light transition-colors">
           Timeceptor
         </a>
-        <span className="font-mono text-[10px] sm:text-xs text-cream-dim tracking-widest uppercase">
-          Ancient timing · Modern life · © 2026
-        </span>
+        <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4 font-mono text-[10px] sm:text-xs text-cream-dim tracking-widest uppercase">
+          <button onClick={() => setHiwOpen(true)} className="hover:text-gold transition-colors">⚙️ How It Works</button>
+          <span className="hidden sm:inline opacity-30">·</span>
+          <a href="https://timecept.com" target="_blank" rel="noopener noreferrer" className="hover:text-gold transition-colors">timecept.com</a>
+          <span className="hidden sm:inline opacity-30">·</span>
+          <span>© 2026</span>
+        </div>
       </footer>
+
+      <HowItWorksModal open={hiwOpen} onClose={() => setHiwOpen(false)} />
     </div>
   );
 }

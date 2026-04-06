@@ -11,6 +11,7 @@ import { motion } from 'motion/react';
 import type { User } from 'firebase/auth';
 import { onAuthChange, signOutUser } from '../firebase';
 import { Background } from '../components/Background';
+import { HowItWorksModal } from '../components/HowItWorksModal';
 import { WeeklyView } from '../components/WeeklyView';
 import { ServiceSelector } from '../components/ServiceSelector';
 import { TodaySummary } from '../components/TodaySummary';
@@ -29,6 +30,7 @@ export default function DashboardPage() {
   const [accessDays, setAccessDays] = useState(3);
   const [hasPaid, setHasPaid] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [hiwOpen, setHiwOpen] = useState(false);
   const [birthData, setBirthData] = useState<{
     birthDate: string; birthTime: string; lat: number; lng: number; locationName: string;
   } | null>(null);
@@ -217,31 +219,38 @@ export default function DashboardPage() {
       <Background />
 
       {/* Nav */}
-      <nav className="relative z-10 flex justify-between items-center px-4 sm:px-6 py-5 md:px-12 md:py-6 border-b border-gold/10">
-        <Link to="/" className="text-xl sm:text-2xl tracking-widest uppercase text-gold font-display font-semibold hover:text-gold-light transition-colors">
-          Timeceptor
+      <nav className="relative z-10 flex justify-between items-center px-4 sm:px-6 py-1 md:px-12 md:py-3 border-b border-gold/10">
+        <Link to="/" className="flex items-center gap-2 sm:gap-3 hover:opacity-90 transition-opacity">
+          <img src="/logo.png" alt="" className="h-10 w-10 sm:h-20 sm:w-20 object-contain drop-shadow-[0_0_20px_rgba(244,161,29,0.6)]" />
+          <div className="flex flex-col">
+            <span className="text-xl sm:text-2xl tracking-widest uppercase text-gold font-display font-semibold">Timeceptor</span>
+            <a href="https://timecept.com" target="_blank" rel="noopener noreferrer" className="font-mono text-[9px] sm:text-[10px] tracking-widest text-cream-dim/50 hover:text-gold/70 transition-colors">by timecept.com</a>
+          </div>
         </Link>
-        <div className="flex items-center gap-3 sm:gap-4">
+        <div className="flex items-center gap-2 sm:gap-3">
           {hasPaid && (
-            <Link to="/swot" className="font-mono text-xs text-gold tracking-widest uppercase hover:text-gold-light transition-colors hidden sm:block">
-              ✦ SWOT
+            <Link to="/swot" className="hidden sm:flex items-center gap-2 font-mono text-sm text-gold tracking-widest uppercase border-2 border-gold/55 rounded-full px-5 py-2.5 hover:border-gold/90 hover:bg-gold/10 hover:text-gold-light transition-all">
+              ✦ SWOT Analysis
             </Link>
           )}
-          <Link to="/app" className="font-mono text-xs text-cream-dim tracking-widest uppercase hover:text-gold transition-colors hidden sm:block">
-            Calculator
+          <Link to="/decide" className="hidden sm:flex items-center gap-2 font-mono text-sm text-cream-dim tracking-widest uppercase border-2 border-gold/35 rounded-full px-5 py-2.5 hover:border-gold/70 hover:text-gold hover:bg-gold/5 transition-all">
+            🎯 Act or Wait?
+          </Link>
+          <Link to="/plans" className="hidden sm:flex items-center gap-2 font-mono text-sm text-cream-dim tracking-widest uppercase border-2 border-gold/35 rounded-full px-5 py-2.5 hover:border-gold/70 hover:text-gold hover:bg-gold/5 transition-all">
+            📋 Life Blueprints
           </Link>
           <div className="relative">
             <button
               onClick={() => setUserMenuOpen(o => !o)}
-              className="flex items-center gap-2 border border-gold/20 rounded-sm px-3 py-1.5 hover:border-gold/40 transition-colors"
+              className="flex items-center gap-2 rounded-full p-1 hover:bg-gold/5 transition-all"
             >
               {user.photoURL
-                ? <img src={user.photoURL} alt="" className="w-6 h-6 rounded-full" />
-                : <span className="w-6 h-6 rounded-full bg-gold/20 flex items-center justify-center text-gold text-xs font-bold">
+                ? <img src={user.photoURL} alt="" className="w-9 h-9 rounded-full ring-2 ring-gold/45 ring-offset-2 ring-offset-[#07071a]" />
+                : <span className="w-9 h-9 rounded-full bg-gradient-to-br from-gold/35 to-gold/10 ring-2 ring-gold/45 ring-offset-2 ring-offset-[#07071a] flex items-center justify-center text-gold text-base font-semibold font-display">
                     {(user.displayName ?? user.email ?? 'U')[0].toUpperCase()}
                   </span>
               }
-              <span className="hidden sm:block font-mono text-xs text-cream-dim tracking-widest truncate max-w-[120px]">
+              <span className="hidden sm:block font-mono text-sm text-cream-dim tracking-widest truncate max-w-[140px]">
                 {user.displayName ?? user.email}
               </span>
             </button>
@@ -261,7 +270,21 @@ export default function DashboardPage() {
                   onClick={() => setUserMenuOpen(false)}
                   className="block w-full text-left px-4 py-3 font-mono text-xs tracking-widest uppercase text-cream-dim hover:text-gold hover:bg-gold/5 transition-colors border-b border-gold/10"
                 >
-                  Calculator
+                  ⏰ Golden Hour
+                </Link>
+                <Link
+                  to="/decide"
+                  onClick={() => setUserMenuOpen(false)}
+                  className="block w-full text-left px-4 py-3 font-mono text-xs tracking-widest uppercase text-cream-dim hover:text-gold hover:bg-gold/5 transition-colors border-b border-gold/10"
+                >
+                  🎯 Act or Wait?
+                </Link>
+                <Link
+                  to="/plans"
+                  onClick={() => setUserMenuOpen(false)}
+                  className="block w-full text-left px-4 py-3 font-mono text-xs tracking-widest uppercase text-cream-dim hover:text-gold hover:bg-gold/5 transition-colors border-b border-gold/10"
+                >
+                  📋 Life Blueprints
                 </Link>
                 <button
                   onClick={() => { signOutUser(); setUserMenuOpen(false); }}
@@ -280,7 +303,7 @@ export default function DashboardPage() {
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-6 sm:mb-8 flex items-start justify-between gap-4"
+          className="mb-6 sm:mb-8 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-4"
         >
           <div>
             <h1 className="text-xl sm:text-2xl font-display font-semibold mb-1">
@@ -291,7 +314,7 @@ export default function DashboardPage() {
             </p>
           </div>
           {birthData && (
-            <div className="text-right shrink-0">
+            <div className="text-left sm:text-right shrink-0">
               <p className="font-mono text-xs text-cream-dim tracking-wide">
                 Your Birthday = {(() => { const [y,m,d] = birthData.birthDate.split('-'); return new Date(Number(y), Number(m)-1, Number(d)).toLocaleDateString('en-US', { month: 'long', day: 'numeric' }); })()}
               </p>
@@ -350,6 +373,36 @@ export default function DashboardPage() {
           </motion.div>
         )}
 
+        {/* SWOT Analysis CTA for non-paid users */}
+        {!hasPaid && windows.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.12 }}
+            className="mb-6"
+          >
+            <button
+              onClick={() => document.getElementById('results-section')?.scrollIntoView({ behavior: 'smooth' })}
+              className="w-full p-5 border-2 border-indigo-500/30 rounded-lg bg-indigo-500/[0.06] hover:bg-indigo-500/[0.12] hover:border-indigo-500/50 transition-all text-left flex items-center gap-4 group"
+            >
+              <div className="w-12 h-12 rounded-full bg-indigo-500/20 flex items-center justify-center text-2xl flex-shrink-0 group-hover:scale-110 transition-transform">
+                ✦
+              </div>
+              <div className="flex-1">
+                <div className="font-mono text-sm tracking-widest uppercase text-indigo-300 font-bold mb-1">
+                  SWOT Analysis About You
+                </div>
+                <p className="text-xs text-cream-dim leading-relaxed">
+                  Discover your Strengths, Weaknesses, Opportunities & Threats across 90 days × 8 life domains
+                </p>
+              </div>
+              <svg className="w-5 h-5 text-indigo-400 flex-shrink-0 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+          </motion.div>
+        )}
+
         {/* Service selector */}
         <motion.div
           initial={{ opacity: 0 }}
@@ -362,6 +415,7 @@ export default function DashboardPage() {
 
         {/* Weekly view */}
         <motion.div
+          id="results-section"
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
@@ -413,10 +467,16 @@ export default function DashboardPage() {
         <Link to="/" className="text-lg tracking-widest uppercase text-gold font-semibold hover:text-gold-light transition-colors">
           Timeceptor
         </Link>
-        <span className="font-mono text-xs text-cream-dim tracking-widest uppercase">
-          Ancient timing · Modern life · © 2026
-        </span>
+        <div className="flex flex-col md:flex-row items-center gap-3 md:gap-4 font-mono text-xs text-cream-dim tracking-widest uppercase">
+          <button onClick={() => setHiwOpen(true)} className="hover:text-gold transition-colors">⚙️ How It Works</button>
+          <span className="hidden md:inline opacity-30">·</span>
+          <a href="https://timecept.com" target="_blank" rel="noopener noreferrer" className="hover:text-gold transition-colors">timecept.com</a>
+          <span className="hidden md:inline opacity-30">·</span>
+          <span>© 2026</span>
+        </div>
       </footer>
+
+      <HowItWorksModal open={hiwOpen} onClose={() => setHiwOpen(false)} />
     </div>
   );
 }
