@@ -367,17 +367,7 @@ export default function LandingPage() {
             </motion.h2>
           </div>
           <motion.div initial={{ opacity: 0, scale: 0.98 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} transition={{ duration: 0.8 }} className="relative group p-[2px] rounded-xl bg-gradient-to-b from-gold/30 via-gold/5 to-transparent shadow-2xl shadow-gold/5">
-            <div className="rounded-xl overflow-hidden bg-space-bg">
-              {/* Desktop: render normally */}
-              <div className="hidden sm:block"><ModernExplainer /></div>
-              {/* Mobile: render at ~178vw (desktop-scale), then scale(0.5625) so it fits screen width.
-                  The container's height = width × 9/16 × 0.5625 = 56.25vw (the scaled 16:9 result). */}
-              <div className="block sm:hidden overflow-hidden rounded-xl" style={{ height: '56.25vw' }}>
-                <div style={{ width: '177.78vw', transformOrigin: 'top left', transform: 'scale(0.5625)' }}>
-                  <ModernExplainer />
-                </div>
-              </div>
-            </div>
+            <div className="rounded-xl overflow-hidden bg-space-bg"><ModernExplainer /></div>
             <div className="absolute inset-0 rounded-xl pointer-events-none border border-white/5 group-hover:border-gold/20 transition-colors duration-500" />
           </motion.div>
         </section>

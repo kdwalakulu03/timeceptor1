@@ -241,7 +241,7 @@ function SlideThreeScience({ progress }: { progress: number }) {
         We scan transit frequencies against your natal blueprint — when the wave and its inverse perfectly compensate, resonance is found.
       </p>
 
-      <div className="grid grid-cols-1 sm:grid-cols-[1fr_2fr_1fr] gap-4 sm:gap-6 w-full max-w-4xl items-center">
+      <div className="grid grid-cols-[1fr_2fr_1fr] gap-4 sm:gap-6 w-full max-w-4xl items-center">
         
         {/* LEFT: 2D Orbit (restored) */}
         <div className="relative w-28 h-28 sm:w-36 sm:h-36 mx-auto flex items-center justify-center">
@@ -457,7 +457,7 @@ function SlideFiveResults({ progress }: { progress: number }) {
   
   return (
     <div className="absolute inset-0 flex flex-col justify-center p-6 sm:p-10 lg:p-14">
-      <div className="max-w-4xl mx-auto w-full grid grid-cols-1 md:grid-cols-3 gap-5">
+      <div className="max-w-4xl mx-auto w-full grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-5">
         
         {/* Left Col: Badges */}
         <div className="flex flex-col gap-4">
@@ -501,10 +501,10 @@ function SlideFiveResults({ progress }: { progress: number }) {
         </div>
 
         {/* Right Col: Chart */}
-        <div className="md:col-span-2 flex flex-col gap-4">
+        <div className="sm:col-span-2 flex flex-col gap-4">
           <motion.div 
             initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}
-            className="bg-[#0d0d16] border border-white/5 rounded-2xl p-5 sm:p-6 flex flex-col justify-end relative flex-1 h-48 md:h-auto"
+            className="bg-[#0d0d16] border border-white/5 rounded-2xl p-5 sm:p-6 flex flex-col justify-end relative flex-1 h-48 sm:h-auto"
           >
             <div className="absolute top-5 left-5 text-xs sm:text-sm font-bold font-mono tracking-widest text-cream-dim">TODAY'S MAP</div>
             <div className="absolute top-5 right-5 text-[10px] sm:text-xs text-white/30 font-mono tracking-widest">MON MAR 14</div>
@@ -568,7 +568,7 @@ function SlideSixAlerts() {
         </p>
 
         {/* Alerting methods grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 justify-center items-stretch w-full mx-auto mt-4 sm:mt-8">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 justify-center items-stretch w-full mx-auto mt-4 sm:mt-8">
           {/* Telegram Alert */}
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
@@ -748,7 +748,7 @@ export default function ModernExplainer() {
 
   return (
     <div 
-      className="relative w-full aspect-video bg-[#030308] border border-white/10 rounded-2xl md:rounded-[2rem] overflow-hidden shadow-2xl group selection:bg-gold/30 cursor-pointer"
+      className="relative w-full h-[85vh] sm:h-auto sm:aspect-video bg-[#030308] border border-white/10 rounded-2xl md:rounded-[2rem] overflow-hidden shadow-2xl group selection:bg-gold/30 cursor-pointer"
       onClick={() => setIsPaused(!isPaused)}
     >
       {/* Background ambient glow */}
