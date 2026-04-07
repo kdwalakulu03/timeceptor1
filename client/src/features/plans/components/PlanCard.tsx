@@ -73,7 +73,7 @@ export function PlanCard({ plan, isSelected, onSelect, locked }: Props) {
 
         {locked && (
           <div className="mt-2 text-[10px] font-mono text-gold/50 tracking-wider">
-            Unlock with <span className="text-gold">$0.99</span> — <Link to="/dashboard" className="underline hover:text-gold transition-colors" onClick={e => e.stopPropagation()}>upgrade</Link>
+            <Link to="/checkout" className="text-gold underline hover:text-gold-light transition-colors" onClick={e => e.stopPropagation()}>🔓 Unlock</Link>
           </div>
         )}
       </div>

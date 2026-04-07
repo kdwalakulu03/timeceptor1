@@ -17,6 +17,7 @@ import { SERVICES } from '../../services';
 import type { ServiceId } from '../../types';
 import { computeDecision, DecisionResult } from './utils/engine';
 import { ScoreDisplay } from './components/ScoreDisplay';
+import { signInWithGoogle } from '../../firebase';
 
 /* ── Quick-ask presets — common questions mapped to services ─────────── */
 const QUICK_ASKS: { question: string; service: ServiceId; icon: string }[] = [
@@ -42,19 +43,53 @@ export default function DecidePage() {
   const [selectedService, setSelectedService] = useState<ServiceId | null>(null);
   const [result, setResult] = useState<DecisionResult | null>(null);
   const [computing, setComputing] = useState(false);
+  const [anonAsked, setAnonAsked] = useState(false); // Track if anonymous user has already asked one question
 
-  // Auth gate
+  // Auth — no redirect for unauthenticated users
   useEffect(() => {
     return onAuthChange((firebaseUser) => {
       setUser(firebaseUser);
       setLoading(false);
-      if (!firebaseUser) navigate('/app', { replace: true });
     });
   }, [navigate]);
 
-  // Fetch birth data from profile
+  // Fetch birth data from profile (authenticated) or URL params / localStorage (anonymous)
+  useEffect(() => {
+    // Try URL params first (passed from AppPage after anonymous calculation)
+    const params = new URLSearchParams(window.location.search);
+    const pDob = params.get('dob');
+    const pTob = params.get('tob');
+    const pLat = params.get('lat');
+    const pLng = params.get('lng');
+    if (pDob && pTob && pLat && pLng) {
+      setBirthData({
+        birthDate: pDob, birthTime: pTob,
+        lat: parseFloat(pLat), lng: parseFloat(pLng),
+      });
+      // Save to localStorage for future visits
+      try {
+        localStorage.setItem('tc_birth', JSON.stringify({ birthDate: pDob, birthTime: pTob, lat: parseFloat(pLat), lng: parseFloat(pLng) }));
+      } catch {}
+      return;
+    }
+    // Try localStorage
+    try {
+      const stored = localStorage.getItem('tc_birth');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed.birthDate && parsed.birthTime && parsed.lat != null) {
+          setBirthData(parsed);
+          return;
+        }
+      }
+    } catch {}
+  }, []);
+
+  // Authenticated: fetch from server profile
   useEffect(() => {
     if (!user) return;
+    // If we already have birth data from URL/localStorage, skip server fetch
+    if (birthData) return;
     (async () => {
       try {
         const token = await user.getIdToken();
@@ -80,6 +115,8 @@ export default function DecidePage() {
   useEffect(() => {
     if (!selectedService || !birthData) return;
     setComputing(true);
+    // Track anonymous usage
+    if (!user) setAnonAsked(true);
     // Use setTimeout to avoid blocking the UI thread
     const timer = setTimeout(() => {
       try {
@@ -239,6 +276,120 @@ export default function DecidePage() {
       <div className="min-h-screen flex flex-col items-center justify-center bg-space-bg gap-4">
         <div className="w-10 h-10 border-2 border-gold/40 border-t-gold rounded-full animate-spin" />
         <p className="font-mono text-xs text-cream-dim tracking-widest uppercase animate-pulse">Loading…</p>
+      </div>
+    );
+  }
+
+  if (!user) {
+    // Anonymous users see the page but with limited nav
+    return (
+      <div className="relative min-h-screen selection:bg-gold/30 selection:text-gold-light">
+        <Background />
+        {/* Minimal nav for anonymous users */}
+        <nav className="relative z-10 flex justify-between items-center px-4 sm:px-6 py-1 md:px-12 md:py-3 border-b border-gold/10">
+          <Link to="/" className="flex items-center gap-2 sm:gap-3 hover:opacity-90 transition-opacity">
+            <img src="/logo.png" alt="" className="h-10 w-10 sm:h-20 sm:w-20 object-contain drop-shadow-[0_0_20px_rgba(244,161,29,0.6)]" />
+            <div className="flex flex-col">
+              <span className="text-xl sm:text-2xl tracking-widest uppercase text-gold font-display font-semibold">Timeceptor</span>
+              <a href="https://timecept.com" target="_blank" rel="noopener noreferrer" className="font-mono text-[9px] sm:text-[10px] tracking-widest text-cream-dim/50 hover:text-gold/70 transition-colors">by timecept.com</a>
+            </div>
+          </Link>
+          <button
+            onClick={() => signInWithGoogle().catch(console.warn)}
+            className="flex items-center gap-2 px-4 py-2 bg-gold/10 border border-gold/30 rounded-full font-mono text-xs text-gold tracking-widest uppercase hover:bg-gold/20 transition-all"
+          >
+            Sign In
+          </button>
+        </nav>
+
+        <main className="relative z-10 max-w-3xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
+            <h1 className="text-2xl sm:text-3xl font-display font-semibold text-gold mb-2">🎯 Should I Do This Now?</h1>
+            <p className="font-mono text-xs sm:text-sm text-cream-dim tracking-widest uppercase">
+              Instant planetary timing check — pick an activity and get your answer
+            </p>
+          </motion.div>
+
+          {!birthData ? (
+            <div className="text-center py-16">
+              <p className="text-cream-dim mb-4">Enter your birth details first to use the Decision Engine.</p>
+              <Link to="/app?product=decide" className="inline-block px-6 py-3 bg-gold text-space-bg font-mono text-xs font-bold tracking-widest uppercase hover:bg-gold-light transition-all rounded-sm">
+                Enter Birth Details
+              </Link>
+            </div>
+          ) : (
+            <>
+              {/* Quick-ask cards */}
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="mb-8">
+                <div className="font-mono text-[10px] tracking-widest uppercase text-gold/50 mb-3">Tap a question</div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {QUICK_ASKS.map((qa) => {
+                    const isActive = selectedService === qa.service;
+                    return (
+                      <button
+                        key={qa.service}
+                        onClick={() => { setSelectedService(qa.service); setResult(null); }}
+                        className={`flex items-center gap-3 p-3.5 rounded-xl text-left transition-all ${
+                          isActive
+                            ? 'bg-gold/10 border-2 border-gold/50 shadow-lg shadow-gold/10'
+                            : 'bg-white/[0.02] border border-gold/10 hover:border-gold/30 hover:bg-white/[0.04]'
+                        }`}
+                      >
+                        <span className="text-xl">{qa.icon}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className={`text-sm font-medium ${isActive ? 'text-gold' : 'text-cream'}`}>
+                            {qa.question}
+                          </div>
+                          <div className="font-mono text-[9px] text-cream-dim/50 tracking-widest uppercase mt-0.5">
+                            {SERVICES.find(s => s.id === qa.service)?.tagline}
+                          </div>
+                        </div>
+                        {isActive && (
+                          <svg className="w-5 h-5 text-gold flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </motion.div>
+
+              {computing && (
+                <div className="text-center py-12">
+                  <div className="w-10 h-10 border-2 border-gold/40 border-t-gold rounded-full animate-spin mx-auto mb-3" />
+                  <p className="text-gold font-mono text-xs tracking-widest uppercase">Checking planetary alignment…</p>
+                </div>
+              )}
+
+              {result && !computing && selectedServiceDef && (
+                <>
+                  <ScoreDisplay result={result} serviceName={selectedServiceDef.name} />
+                  {/* Sign-in prompt after showing result */}
+                  <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="mt-6 p-5 border-2 border-gold/30 rounded-xl bg-gold/[0.04] text-center">
+                    <p className="font-display font-semibold text-gold mb-1">Like what you see?</p>
+                    <p className="text-xs text-cream-dim mb-4">Sign in to save your chart, share timing cards, and access all products</p>
+                    <button
+                      onClick={() => signInWithGoogle().catch(console.warn)}
+                      className="inline-flex items-center gap-2 px-6 py-3 bg-gold text-space-bg font-bold uppercase tracking-widest text-sm rounded-full shadow-[0_0_15px_rgba(212,168,75,0.5)] hover:shadow-[0_0_30px_rgba(212,168,75,0.8)] transition-all"
+                    >
+                      Sign In with Google
+                    </button>
+                  </motion.div>
+                </>
+              )}
+            </>
+          )}
+        </main>
+
+        <footer className="relative z-10 border-t border-gold/10 px-4 sm:px-6 py-8 md:px-12 flex flex-col md:flex-row justify-between items-center gap-4">
+          <Link to="/" className="text-lg tracking-widest uppercase text-gold font-semibold hover:text-gold-light transition-colors">Timeceptor</Link>
+          <div className="flex flex-col md:flex-row items-center gap-3 md:gap-4 font-mono text-xs text-cream-dim tracking-widest uppercase">
+            <a href="https://timecept.com" target="_blank" rel="noopener noreferrer" className="hover:text-gold transition-colors">timecept.com</a>
+            <span className="hidden md:inline opacity-30">·</span>
+            <span>© 2026</span>
+          </div>
+        </footer>
       </div>
     );
   }

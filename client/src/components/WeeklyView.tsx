@@ -628,12 +628,59 @@ export function WeeklyView({ windows, unlockedDays = 3, onUnlock, user, selected
         })}
       </div>
 
-      {/* Locked rows (left) + CTA cards (right) — split layout */}
+      {/* Locked day rows — full width with CTA strip above */}
       {unlockedDays < 90 && (
-        <div style={{ display: 'flex', flexDirection: 'row', gap: 12, marginTop: 5, fontFamily: FONT, alignItems: 'flex-start' }}>
+        <div style={{ marginTop: 5, fontFamily: FONT }}>
 
-          {/* LEFT: locked day rows stacked as they appear */}
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 5 }}>
+          {/* Two CTA flexboxes above locked area */}
+          <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
+            {/* CTA 1: Free rolling */}
+            <div style={{
+              flex: 1,
+              border: `1px solid rgba(32,197,160,0.20)`,
+              borderRadius: 10,
+              padding: '10px 14px',
+              background: 'rgba(32,197,160,0.04)',
+              display: 'flex', alignItems: 'center', gap: 10,
+            }}>
+              <span style={{ fontSize: 18 }}>🌟</span>
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: C.emerald, letterSpacing: '0.03em' }}>
+                  3-Day Rolling Preview Unlocked
+                </div>
+                <div style={{ fontSize: 10, color: C.textMid, marginTop: 2 }}>
+                  Visit again tomorrow — enjoy fresh results for free.
+                </div>
+              </div>
+            </div>
+            {/* CTA 2: Unlock */}
+            <div
+              onClick={onUnlock}
+              style={{
+                flex: 1,
+                border: `1px solid ${C.borderPeak}`,
+                borderRadius: 10,
+                padding: '10px 14px',
+                background: 'linear-gradient(135deg, rgba(244,161,29,0.06) 0%, rgba(244,161,29,0.02) 100%)',
+                display: 'flex', alignItems: 'center', gap: 10,
+                cursor: 'pointer',
+                transition: 'border-color 0.2s',
+              }}>
+              <Lock size={18} color={C.gold} />
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: C.gold, letterSpacing: '0.03em' }}>
+                  Unlock Your Golden Hours
+                </div>
+                <div style={{ fontSize: 10, color: C.textMid, marginTop: 2 }}>
+                  Up to 90 days of precise timing.
+                </div>
+              </div>
+              <span style={{ marginLeft: 'auto', fontSize: 16, color: C.gold }}>→</span>
+            </div>
+          </div>
+
+          {/* Full-width locked day rows */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
             {dayGroups.map((day, idx) => {
               if (!day.locked) return null;
               const autoRating = getDayRating(day.avgScore);
@@ -703,90 +750,6 @@ export function WeeklyView({ windows, unlockedDays = 3, onUnlock, user, selected
                 </div>
               );
             })}
-          </div>
-
-          {/* RIGHT: free card (top) + paid card (bottom) */}
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 12 }}>
-
-            {/* Card 1: Free tier */}
-            <div style={{
-              border: `1px solid ${C.border}`,
-              borderRadius: 12,
-              padding: '18px 22px',
-              background: 'rgba(32,197,160,0.04)',
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                <span style={{ fontSize: 18 }}>🎁</span>
-                <span style={{ fontSize: 14, fontWeight: 700, color: C.emerald, letterSpacing: '0.03em' }}>
-                  Your 3-Day Golden Hours Are Unlocked — Free
-                </span>
-              </div>
-              <p style={{ fontSize: 13, color: C.textMid, lineHeight: '20px', margin: 0 }}>
-                No payment needed. Come back tomorrow and your next 3-day package unlocks automatically.
-                Keep visiting daily to always have fresh results.
-              </p>
-            </div>
-
-            {/* Card 2: Paid unlock CTA */}
-            <div style={{
-              border: `1px solid ${C.borderPeak}`,
-              borderRadius: 12,
-              padding: '20px 22px',
-              background: 'linear-gradient(135deg, rgba(244,161,29,0.06) 0%, rgba(244,161,29,0.02) 100%)',
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-                <Lock size={16} color={C.gold} />
-                <span style={{ fontSize: 15, fontWeight: 700, color: C.gold, letterSpacing: '0.04em' }}>
-                  Unlock Your Golden Hours
-                </span>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 9, marginBottom: 18 }}>
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-                  <span style={{ color: C.emerald, fontSize: 14, lineHeight: '20px', flexShrink: 0 }}>✦</span>
-                  <span style={{ fontSize: 13, color: C.text, lineHeight: '20px' }}>
-                    No more 3-day limit or repetitive visits
-                  </span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-                  <span style={{ color: C.emerald, fontSize: 14, lineHeight: '20px', flexShrink: 0 }}>✦</span>
-                  <span style={{ fontSize: 13, color: C.text, lineHeight: '20px' }}>
-                    Schedule your work <strong style={{ color: C.gold }}>ahead of time</strong> — no last-minute rush
-                  </span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-                  <span style={{ color: C.emerald, fontSize: 14, lineHeight: '20px', flexShrink: 0 }}>✦</span>
-                  <span style={{ fontSize: 13, color: C.text, lineHeight: '20px' }}>
-                    <strong style={{ color: C.gold }}>90 days</strong> of personalised timing — see your opportunities & calculate SWOT analysis
-                  </span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-                  <span style={{ color: C.emerald, fontSize: 14, lineHeight: '20px', flexShrink: 0 }}>✦</span>
-                  <span style={{ fontSize: 13, color: C.text, lineHeight: '20px' }}>
-                    One-time <strong style={{ color: C.gold }}>$0.99</strong> — unlock all services, all days, no subscription, surf as you want
-                  </span>
-                </div>
-              </div>
-              <div style={{ textAlign: 'center' }}>
-                <button
-                  onClick={onUnlock}
-                  style={{
-                    background: 'linear-gradient(135deg, #F4A11D 0%, #D4A84B 100%)',
-                    border: 'none',
-                    color: '#0A0A1A', cursor: 'pointer',
-                    fontFamily: FONT,
-                    fontSize: 13, fontWeight: 800,
-                    letterSpacing: '0.08em', textTransform: 'uppercase',
-                    padding: '11px 30px', borderRadius: 24,
-                    boxShadow: '0 4px 16px rgba(244,161,29,0.3)',
-                    transition: 'all 0.2s',
-                  }}
-                  onMouseEnter={(e) => { (e.target as HTMLButtonElement).style.boxShadow = '0 4px 24px rgba(244,161,29,0.5)'; }}
-                  onMouseLeave={(e) => { (e.target as HTMLButtonElement).style.boxShadow = '0 4px 16px rgba(244,161,29,0.3)'; }}
-                >
-                  ✦ Unlock Now — $0.99
-                </button>
-              </div>
-            </div>
           </div>
         </div>
       )}

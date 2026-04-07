@@ -118,7 +118,7 @@ export default function SwotPage() {
         if (accessRes.ok) {
           const data = await accessRes.json();
           setHasPaid(data.paid ?? false);
-          if (!data.paid) { navigate('/dashboard', { replace: true }); return; }
+          // No redirect — non-paid users see soft paywall preview
         }
         if (profileRes.ok) {
           const profile = await profileRes.json();
@@ -130,9 +130,25 @@ export default function SwotPage() {
     })();
   }, [user, navigate]);
 
-  // Compute SWOT data across all services (heavy — runs once)
+  // Unlock handler — navigate to /checkout page
+  const handleUnlock = useCallback(() => {
+    navigate('/checkout');
+  }, [navigate]);
+
+  // Check URL for payment result
   useEffect(() => {
-    if (!birthData || !hasPaid) return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('payment') === 'success') {
+      setHasPaid(true);
+      window.history.replaceState({}, '', '/swot');
+    }
+  }, []);
+
+  // Compute SWOT data across all services (heavy — runs once)
+  // Paid users: 90 days. Free users: 7 days (preview mode).
+  const computeDays = hasPaid ? 90 : 7;
+  useEffect(() => {
+    if (!birthData) return;
     setComputing(true);
 
     setTimeout(() => {
@@ -144,7 +160,7 @@ export default function SwotPage() {
           const wins = getWeeklyWindows(
             birthData.birthDate, birthData.birthTime,
             birthData.lat, birthData.lng,
-            weekStart, svc.id, 90,
+            weekStart, svc.id, computeDays,
           );
 
           const scores = wins.map(w => w.score);
@@ -503,7 +519,7 @@ export default function SwotPage() {
           <img src="/logo.png" alt="" className="h-10 w-10 sm:h-20 sm:w-20 object-contain drop-shadow-[0_0_20px_rgba(244,161,29,0.6)]" />
           <div className="flex flex-col">
             <span className="text-xl sm:text-2xl tracking-widest uppercase text-gold font-display font-semibold">Timeceptor</span>
-            <a href="https://timecept.com" target="_blank" rel="noopener noreferrer" className="font-mono text-[9px] sm:text-[10px] tracking-widest text-cream-dim/50 hover:text-gold/70 transition-colors">by timecept.com</a>
+            <a href="https://timecept.com" target="_blank" rel="noopener noreferrer" className="font-mono text-[10px] sm:text-xs tracking-widest text-cream-dim/60 hover:text-gold/70 transition-colors font-medium">by timecept.com</a>
           </div>
         </Link>
         <div className="flex items-center gap-2 sm:gap-3">
@@ -563,7 +579,26 @@ export default function SwotPage() {
             <Link to="/app" className="inline-block px-6 py-3 bg-gold text-space-bg font-mono text-xs font-bold tracking-widest uppercase hover:bg-gold-light transition-all rounded-sm">Set Up My Chart</Link>
           </div>
         ) : swot && patterns ? (
-          <>
+          <div className="relative">
+            {/* Soft paywall overlay for non-paid users */}
+            {!hasPaid && (
+              <div className="sticky top-0 z-40 -mx-4 sm:-mx-6 mb-6">
+                <div className="bg-gradient-to-b from-space-bg via-space-bg/95 to-transparent p-6 sm:p-8 text-center rounded-b-xl border-b border-gold/20">
+                  <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-gold/10 border border-gold/30 rounded-full mb-4">
+                    <span className="font-mono text-[10px] text-gold tracking-widest uppercase font-bold">7-Day Preview</span>
+                  </div>
+                  <h3 className="font-display text-xl sm:text-2xl font-semibold text-gold mb-2">Unlock Your Full SWOT Analysis</h3>
+                  <p className="text-sm text-cream-dim mb-5 max-w-lg mx-auto">You're viewing a 7-day preview. Unlock up to 365 days of deep analysis across all 8 life domains.</p>
+                  <button
+                    onClick={handleUnlock}
+                    className="px-8 py-3.5 bg-gold text-space-bg font-bold uppercase tracking-widest text-sm rounded-full shadow-[0_0_20px_rgba(212,168,75,0.5)] hover:shadow-[0_0_35px_rgba(212,168,75,0.8)] transition-all"
+                  >
+                    🔓 Unlock Now
+                  </button>
+                  <p className="font-mono text-[10px] text-cream-dim/60 mt-2 tracking-widest">One-time payment · No subscription · All products</p>
+                </div>
+              </div>
+            )}
             {/* Tab bar */}
             <div className="flex gap-1 mb-8 border-b border-gold/10 overflow-x-auto">
               {TABS.map(tab => (
@@ -591,7 +626,7 @@ export default function SwotPage() {
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
                   {[...serviceData].sort((a, b) => b.avgScore - a.avgScore).map((s, idx) => (
                     <div key={s.id} className="border border-gold/10 rounded-lg p-4 bg-white/[0.02] relative overflow-hidden group hover:border-gold/25 transition-colors">
-                      {idx === 0 && <div className="absolute top-0 right-0 bg-gold/15 text-gold text-[9px] font-mono font-bold px-2 py-0.5 rounded-bl-lg tracking-widest">BEST</div>}
+                      {idx === 0 && <div className="absolute top-0 right-0 bg-gold/15 text-gold text-[10px] font-mono font-bold px-2 py-0.5 rounded-bl-lg tracking-widest">BEST</div>}
                       <div className="text-xl mb-1">{s.icon}</div>
                       <div className="font-mono text-xs text-cream-dim tracking-wide mb-2">{s.name}</div>
                       <div className={`text-3xl font-bold ${scoreColor(s.avgScore)}`}>{s.avgScore}</div>
@@ -600,8 +635,8 @@ export default function SwotPage() {
                         <div className={`h-full rounded-full ${scoreBg(s.avgScore)} transition-all`} style={{ width: `${s.avgScore}%`, opacity: 0.7 }} />
                       </div>
                       <div className="flex justify-between mt-2">
-                        <span className="font-mono text-[10px] text-cream-dim">{s.peakCount} peaks</span>
-                        <span className={`font-mono text-[10px] font-bold ${trendColor(s.trend)}`}>{trendIcon(s.trend)} {s.trend}</span>
+                        <span className="font-mono text-xs text-cream-dim">{s.peakCount} peaks</span>
+                        <span className={`font-mono text-xs font-bold ${trendColor(s.trend)}`}>{trendIcon(s.trend)} {s.trend}</span>
                       </div>
                     </div>
                   ))}
@@ -611,19 +646,19 @@ export default function SwotPage() {
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
                   <div className="border border-gold/10 rounded-lg p-4 bg-white/[0.02] text-center">
                     <div className="text-2xl font-bold text-gold">{DAY_NAMES[patterns.bestDayIdx]}</div>
-                    <div className="font-mono text-[10px] text-cream-dim tracking-widest mt-1">BEST DAY</div>
+                    <div className="font-mono text-xs text-cream-dim tracking-widest mt-1 font-medium">BEST DAY</div>
                   </div>
                   <div className="border border-gold/10 rounded-lg p-4 bg-white/[0.02] text-center">
                     <div className="text-2xl font-bold text-indigo-300">{String(patterns.peakHotspot).padStart(2, '0')}:00</div>
-                    <div className="font-mono text-[10px] text-cream-dim tracking-widest mt-1">PEAK HOUR</div>
+                    <div className="font-mono text-xs text-cream-dim tracking-widest mt-1 font-medium">PEAK HOUR</div>
                   </div>
                   <div className="border border-gold/10 rounded-lg p-4 bg-white/[0.02] text-center">
                     <div className="text-2xl font-bold text-amber-300 capitalize">{patterns.chronotype}</div>
-                    <div className="font-mono text-[10px] text-cream-dim tracking-widest mt-1">CHRONOTYPE</div>
+                    <div className="font-mono text-xs text-cream-dim tracking-widest mt-1 font-medium">CHRONOTYPE</div>
                   </div>
                   <div className="border border-gold/10 rounded-lg p-4 bg-white/[0.02] text-center">
                     <div className="text-2xl font-bold text-emerald-400">{patterns.dominantPlanetGlobal}</div>
-                    <div className="font-mono text-[10px] text-cream-dim tracking-widest mt-1">RULING PLANET</div>
+                    <div className="font-mono text-xs text-cream-dim tracking-widest mt-1 font-medium">RULING PLANET</div>
                   </div>
                 </div>
 
@@ -724,7 +759,7 @@ export default function SwotPage() {
                   <div className="grid grid-cols-7 gap-1 sm:gap-2 mb-4">
                     {DAY_NAMES.map((day, i) => (
                       <div key={day} className="text-center">
-                        <div className="font-mono text-[10px] text-cream-dim tracking-widest mb-2">{day}</div>
+                        <div className="font-mono text-xs text-cream-dim tracking-widest mb-2">{day}</div>
                         <div className={`mx-auto w-9 h-9 sm:w-12 sm:h-12 rounded-lg flex items-center justify-center text-sm sm:text-lg font-bold ${
                           i === patterns.bestDayIdx ? 'bg-emerald-500/20 text-emerald-400 ring-2 ring-emerald-500/40' :
                           i === patterns.worstDayIdx ? 'bg-red-500/15 text-red-400' :
@@ -732,8 +767,8 @@ export default function SwotPage() {
                         }`}>
                           {patterns.globalDayAvg[i]}
                         </div>
-                        {i === patterns.bestDayIdx && <div className="font-mono text-[9px] text-emerald-400 mt-1">BEST</div>}
-                        {i === patterns.worstDayIdx && <div className="font-mono text-[9px] text-red-400 mt-1">WEAKEST</div>}
+                        {i === patterns.bestDayIdx && <div className="font-mono text-[10px] text-emerald-400 mt-1 font-bold">BEST</div>}
+                        {i === patterns.worstDayIdx && <div className="font-mono text-[10px] text-red-400 mt-1 font-bold">WEAKEST</div>}
                       </div>
                     ))}
                   </div>
@@ -784,7 +819,7 @@ export default function SwotPage() {
                           <span className="text-xl w-8 text-center">{s.icon}</span>
                           <div className="flex-1 min-w-0">
                             <div className="font-mono text-xs font-bold text-cream tracking-wide">{s.name}</div>
-                            <div className="font-mono text-[10px] text-cream-dim">
+                            <div className="font-mono text-xs text-cream-dim">
                               Best on <strong className="text-gold">{DAY_NAMES[bestDow]}s</strong> around <strong className="text-gold">{String(peakH).padStart(2, '0')}:00</strong> · Dominated by <strong className="text-indigo-300">{s.dominantPlanet}</strong>
                             </div>
                           </div>
@@ -807,8 +842,8 @@ export default function SwotPage() {
                           <span className="text-gold/40">+</span>
                           <span className="text-lg">{syn.b.icon}</span>
                           <div className="flex-1 min-w-0">
-                            <div className="font-mono text-[10px] text-cream-dim">{syn.a.name} + {syn.b.name}</div>
-                            <div className="font-mono text-[10px] text-gold">Peak on {syn.day}s</div>
+                            <div className="font-mono text-xs text-cream-dim">{syn.a.name} + {syn.b.name}</div>
+                            <div className="font-mono text-xs text-gold">Peak on {syn.day}s</div>
                           </div>
                         </div>
                       ))}
@@ -833,7 +868,7 @@ export default function SwotPage() {
                   </div>
                   <div className="flex gap-[2px] mt-1">
                     {Array.from({ length: 24 }, (_, h) => (
-                      <div key={h} className="flex-1 text-center font-mono text-[7px] text-cream-dim/50">
+                      <div key={h} className="flex-1 text-center font-mono text-[9px] text-cream-dim/65">
                         {h % 6 === 0 ? String(h).padStart(2, '0') : ''}
                       </div>
                     ))}
@@ -863,7 +898,7 @@ export default function SwotPage() {
                               <div className="font-mono text-sm font-bold text-cream tracking-wide">{s.name}</div>
                               <div className="flex items-center gap-2">
                                 <span className={`font-mono text-xs font-bold ${scoreColor(s.avgScore)}`}>{s.avgScore}/100</span>
-                                <span className={`font-mono text-[10px] ${trendColor(s.trend)}`}>{trendIcon(s.trend)} {s.trend}</span>
+                                <span className={`font-mono text-xs ${trendColor(s.trend)}`}>{trendIcon(s.trend)} {s.trend}</span>
                               </div>
                             </div>
                             {/* Timing card share/download */}
@@ -929,7 +964,7 @@ export default function SwotPage() {
                           <div className={`font-mono text-sm font-bold w-8 text-center ${scoreColor(patterns.globalDayAvg[i])}`}>{patterns.globalDayAvg[i]}</div>
                           <div className="flex-1 flex gap-2 flex-wrap">
                             {bestForDay.map(s => (
-                              <span key={s.id} className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-white/[0.04] text-[10px] font-mono text-cream-dim">
+                              <span key={s.id} className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-white/[0.04] text-xs font-mono text-cream-dim">
                                 {s.icon} {s.name} <span className={scoreColor(s.dayOfWeekAvg[i])}>{s.dayOfWeekAvg[i]}</span>
                               </span>
                             ))}
@@ -948,7 +983,7 @@ export default function SwotPage() {
                 </div>
               </motion.div>
             )}
-          </>
+          </div>
         ) : null}
       </main>
 
@@ -956,9 +991,9 @@ export default function SwotPage() {
         <Link to="/" className="text-lg tracking-widest uppercase text-gold font-semibold hover:text-gold-light transition-colors">Timeceptor</Link>
         <div className="flex flex-col md:flex-row items-center gap-3 md:gap-4 font-mono text-xs text-cream-dim tracking-widest uppercase">
           <button onClick={() => setHiwOpen(true)} className="hover:text-gold transition-colors">⚙️ How It Works</button>
-          <span className="hidden md:inline opacity-30">·</span>
+          <span className="hidden md:inline opacity-50">·</span>
           <a href="https://timecept.com" target="_blank" rel="noopener noreferrer" className="hover:text-gold transition-colors">timecept.com</a>
-          <span className="hidden md:inline opacity-30">·</span>
+          <span className="hidden md:inline opacity-50">·</span>
           <span>© 2026</span>
         </div>
       </footer>

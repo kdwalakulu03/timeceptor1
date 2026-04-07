@@ -1,9 +1,14 @@
 /**
- * AppPage — The calculator page (refactored from App.tsx).
+ * AppPage — The calculator page.
  * Birth details → planetary hour engine → weekly windows.
- * After calculation, users can navigate to /dashboard for daily use.
+ *
+ * Supports:
+ *   - Anonymous 1-day results (no sign-in required)
+ *   - Celebrity demo mode (?demo=elon)
+ *   - Product-intent routing (?product=swot|decide|plans)
+ *   - Free sharable Golden Hour + Act-or-Wait cards
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import type { User } from 'firebase/auth';
@@ -21,6 +26,14 @@ import { CosmicForm } from '../components/CosmicForm';
 import { ResultsDisplay } from '../components/ResultsDisplay';
 import { Legend } from '../components/Legend';
 import { NotificationCTA } from '../components/NotificationCTA';
+import { TodaySummary } from '../components/TodaySummary';
+import { getCelebrity, CelebrityProfile } from '../data/celebrities';
+import { computeDecision, DecisionResult } from '../features/decide/utils/engine';
+import { SERVICES, PLANET_SERVICE_DATA } from '../services';
+import {
+  preloadLogo,
+} from '../lib/cardRenderer';
+import { FreeCards, type FreeCardsData, type SwotServiceSummary, type SwotMatrix } from '../components/free-cards';
 
 const DEFAULT_COORDS = { lat: 22.5726, lng: 88.3639 };
 
@@ -48,6 +61,18 @@ export default function AppPage() {
   } | null>(null);
 
   const [weeklyWindows, setWeeklyWindows] = useState<HourWindow[]>([]);
+
+  // ── Demo mode + product intent ───────────────────────────────────────
+  const [demoMode, setDemoMode] = useState<CelebrityProfile | null>(null);
+  const [productIntent, setProductIntent] = useState<string | null>(null);
+  const [decisionResult, setDecisionResult] = useState<DecisionResult | null>(null);
+
+  // ── SWOT (8-service analysis — free for everyone) ──────────────────────
+  const [swotServices, setSwotServices] = useState<SwotServiceSummary[]>([]);
+  const [swotMatrix, setSwotMatrix] = useState<SwotMatrix | null>(null);
+
+  // Preload logo for card rendering
+  useEffect(() => { preloadLogo(); }, []);
 
   // ── Firebase Auth ──────────────────────────────────────────────────────
   const [user, setUser] = useState<User | null>(null);
@@ -97,7 +122,7 @@ export default function AppPage() {
   const ctaRef = React.useRef<HTMLDivElement>(null);
   const resultsRef = React.useRef<HTMLDivElement>(null);
 
-  // ── URL params for share links ──────────────────────────────────────────
+  // ── URL params for share links + demo mode + product intent ─────────────
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const pDob = params.get('dob');
@@ -107,6 +132,8 @@ export default function AppPage() {
     const pLng = params.get('lng');
     const pLoc = params.get('loc');
     const pService = params.get('service') as ServiceId | null;
+    const pDemo = params.get('demo');
+    const pProduct = params.get('product');
 
     if (pDob) setDob(pDob);
     if (pTob) setTob(pTob);
@@ -114,7 +141,30 @@ export default function AppPage() {
     if (pLat && pLng) { setCoords({ lat: parseFloat(pLat), lng: parseFloat(pLng) }); setCoordsResolved(true); }
     if (pLoc) setLocation(decodeURIComponent(pLoc));
     if (pService) setSelectedService(pService);
+    if (pProduct) setProductIntent(pProduct);
+
+    // Celebrity demo mode — auto-fill and auto-compute
+    if (pDemo) {
+      const celeb = getCelebrity(pDemo);
+      if (celeb) {
+        setDemoMode(celeb);
+        setDob(celeb.birthDate);
+        setTob(celeb.birthTime);
+        setCoords({ lat: celeb.lat, lng: celeb.lng });
+        setCoordsResolved(true);
+        setLocation(celeb.location);
+      }
+    }
   }, []);
+
+  // Auto-calculate for demo mode once celeb data is loaded
+  useEffect(() => {
+    if (demoMode && dob && coordsResolved) {
+      // Small delay for UI to render
+      const t = setTimeout(() => calculateWindow(), 300);
+      return () => clearTimeout(t);
+    }
+  }, [demoMode, dob, coordsResolved]);  // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Re-compute when service changes ─────────────────────────────────────
   useEffect(() => {
@@ -165,12 +215,10 @@ export default function AppPage() {
     return `${window.location.origin}/app?${params.toString()}`;
   };
 
-  // ── Core calculation ──────────────────────────────────────────────────────
+  // ── Core calculation — NO AUTH REQUIRED for 1-day results ─────────────
   const calculateWindow = async () => {
     if (!dob) return;
-    if (!user) {
-      try { await signInWithGoogle(); } catch { return; }
-    }
+    // Auth is NOT required — anonymous users get 1-day free results
 
     const finalTob = unknownTime ? '12:00' : (tob || '12:00');
     const birthDateTime = new Date(`${dob}T${finalTob}`);
@@ -222,20 +270,112 @@ export default function AppPage() {
       setWeeklyWindows(wins);
     } catch (e) { console.warn('[weekly scoring]', e); }
 
-    const token = user ? await user.getIdToken() : null;
-    const uid = user ? user.uid : `g_${dob}_${finalTob}_${coords.lat.toFixed(2)}_${coords.lng.toFixed(2)}`.replace(/[^a-zA-Z0-9_\-.]/g, '_');
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-    if (token) headers['Authorization'] = `Bearer ${token}`;
+    // Compute act-or-wait decision for the free verdict card
+    try {
+      const decision = computeDecision(dob, finalTob, coords.lat, coords.lng, selectedService);
+      setDecisionResult(decision);
+    } catch (e) { console.warn('[decision]', e); }
 
-    fetch('/api/windows/precalc', {
-      method: 'POST', headers,
-      body: JSON.stringify({ uid, birthDate: dob, birthTime: finalTob, lat: coords.lat, lng: coords.lng }),
-    }).then(r => r.json()).then(d => {
-      console.log(`[precalc] ${d.fromCache ? 'cache hit' : `stored ${d.stored} windows`}`);
-    }).catch(e => console.warn('[precalc]', e));
+    // Compute 8-service SWOT for free cards (client-side, zero API cost)
+    // Rich data: avg, peaks, lows, trend, bestDay/Hour/Score, morningAvg, eveningAvg, dominantPlanet
+    try {
+      const weekStart = new Date(); weekStart.setHours(0, 0, 0, 0);
+      const DAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-    // Persist birth data to user profile (so dashboard can auto-load next time)
-    if (user && token) {
+      const summaries: SwotServiceSummary[] = SERVICES.map(svc => {
+        const svcWins = getWeeklyWindows(dob, finalTob, coords.lat, coords.lng, weekStart, svc.id, 7);
+        const scores = svcWins.map(w => w.score);
+        const avg = Math.round(scores.reduce((a, b) => a + b, 0) / (scores.length || 1));
+        const peaks = svcWins.filter(w => w.score >= 62);
+        const weaks = svcWins.filter(w => w.score < 30);
+
+        // Best window
+        const best = svcWins.reduce((a, b) => a.score > b.score ? a : b, svcWins[0]);
+        const bestDate = new Date(best.date);
+        const bestDay = bestDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+        // Trend (first half vs second half of 7 days)
+        const halfIdx = Math.floor(svcWins.length / 2);
+        const firstHalf = svcWins.slice(0, halfIdx);
+        const secondHalf = svcWins.slice(halfIdx);
+        const avgFirst = firstHalf.reduce((a, w) => a + w.score, 0) / (firstHalf.length || 1);
+        const avgSecond = secondHalf.reduce((a, w) => a + w.score, 0) / (secondHalf.length || 1);
+        const trendDiff = avgSecond - avgFirst;
+        const trend = trendDiff > 2 ? 'rising' as const : trendDiff < -2 ? 'falling' as const : 'stable' as const;
+
+        // Morning vs evening avg
+        const morningWins = svcWins.filter(w => w.hour >= 4 && w.hour < 10);
+        const eveningWins = svcWins.filter(w => w.hour >= 18 && w.hour < 23);
+        const morningAvg = morningWins.length ? Math.round(morningWins.reduce((a, w) => a + w.score, 0) / morningWins.length) : 0;
+        const eveningAvg = eveningWins.length ? Math.round(eveningWins.reduce((a, w) => a + w.score, 0) / eveningWins.length) : 0;
+
+        // Dominant planet in peaks
+        const planetCounts: Record<string, number> = {};
+        peaks.forEach(w => { planetCounts[w.horaRuler] = (planetCounts[w.horaRuler] || 0) + 1; });
+        const dominantPlanet = Object.entries(planetCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'N/A';
+
+        return {
+          id: svc.id, name: svc.name, icon: svc.icon,
+          avgScore: avg,
+          peakCount: peaks.length,
+          weakCount: weaks.length,
+          bestDay, bestHour: best.hour, bestScore: best.score,
+          trend, morningAvg, eveningAvg, dominantPlanet,
+        };
+      });
+
+      const sorted = summaries.sort((a, b) => b.avgScore - a.avgScore);
+      setSwotServices(sorted);
+
+      // Pre-compute SWOT matrix with prose insights
+      const topServices = sorted.slice(0, 3);
+      const bottomServices = sorted.slice(-2);
+      const risingServices = sorted.filter(s => s.trend === 'rising');
+      const fallingServices = sorted.filter(s => s.trend === 'falling');
+
+      const matrixData: import('../components/free-cards/types').SwotMatrix = {
+        strengths: topServices.map(s => ({
+          title: `${s.icon} ${s.name} — Strong alignment`,
+          detail: `Average score ${s.avgScore}/100 with ${s.peakCount} peak hours this week. Your planetary configuration naturally supports this.`,
+          icon: s.icon,
+        })),
+        weaknesses: bottomServices.map(s => ({
+          title: `${s.icon} ${s.name} — Needs careful timing`,
+          detail: `Average score ${s.avgScore}/100 with ${s.weakCount} low-energy hours. Only engage during peak windows.`,
+          icon: s.icon,
+        })),
+        opportunities: risingServices.length > 0
+          ? risingServices.slice(0, 2).map(s => ({
+              title: `${s.icon} ${s.name} — Rising energy`,
+              detail: `Energy is strengthening for ${s.name.toLowerCase()}. Best window: ${s.bestDay} at ${String(s.bestHour).padStart(2, '0')}:00 (score ${s.bestScore}).`,
+              icon: s.icon,
+            }))
+          : [{ title: '✦ All services stable', detail: 'Your 7-day outlook is steady across all domains.', icon: '✦' }],
+        threats: fallingServices.length > 0
+          ? fallingServices.slice(0, 2).map(s => ({
+              title: `${s.icon} ${s.name} — Declining energy`,
+              detail: `Timing energy is weakening for ${s.name.toLowerCase()}. Act sooner rather than later.`,
+              icon: s.icon,
+            }))
+          : [{ title: '✦ No significant threats', detail: 'No services show declining trends this week.', icon: '✦' }],
+      };
+      setSwotMatrix(matrixData);
+    } catch (e) { console.warn('[swot]', e); }
+
+    // Server-side calls only for authenticated users
+    if (user) {
+      const token = await user.getIdToken();
+      const uid = user.uid;
+      const headers: Record<string, string> = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
+
+      fetch('/api/windows/precalc', {
+        method: 'POST', headers,
+        body: JSON.stringify({ uid, birthDate: dob, birthTime: finalTob, lat: coords.lat, lng: coords.lng }),
+      }).then(r => r.json()).then(d => {
+        console.log(`[precalc] ${d.fromCache ? 'cache hit' : `stored ${d.stored} windows`}`);
+      }).catch(e => console.warn('[precalc]', e));
+
+      // Persist birth data to user profile (so dashboard can auto-load next time)
       fetch('/api/users/me', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -256,7 +396,6 @@ export default function AppPage() {
     try {
       if (user) {
         const token = await user.getIdToken();
-        // Ensure birth data is persisted before navigating
         await fetch('/api/users/me', {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -267,11 +406,17 @@ export default function AppPage() {
           }),
         }).catch(() => {});
       }
+      // Product-intent routing: after auth, go to the intended product
+      if (productIntent === 'swot')   { navigate('/swot');   return; }
+      if (productIntent === 'decide')  { navigate('/decide');  return; }
+      if (productIntent === 'plans')   { navigate('/plans');   return; }
       navigate('/dashboard');
     } catch {
       navigate('/dashboard');
     }
   };
+
+  // ── Free card handlers are now inside FreeCards component ──────────────
 
   const handleSubscribe = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -292,7 +437,7 @@ export default function AppPage() {
           <img src="/logo.png" alt="" className="h-10 w-10 sm:h-20 sm:w-20 object-contain drop-shadow-[0_0_20px_rgba(244,161,29,0.6)]" />
           <div className="flex flex-col">
             <span className="text-xl sm:text-2xl tracking-widest uppercase text-gold font-display font-semibold">Timeceptor</span>
-            <a href="https://timecept.com" target="_blank" rel="noopener noreferrer" className="font-mono text-[9px] sm:text-[10px] tracking-widest text-cream-dim/50 hover:text-gold/70 transition-colors">by timecept.com</a>
+            <a href="https://timecept.com" target="_blank" rel="noopener noreferrer" className="font-mono text-[10px] sm:text-xs tracking-widest text-cream-dim/60 hover:text-gold/70 transition-colors font-medium">by timecept.com</a>
           </div>
         </Link>
         <div className="flex items-center gap-2 sm:gap-3">
@@ -385,6 +530,25 @@ export default function AppPage() {
       </nav>
 
       <main className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 pb-16 md:pb-24">
+        {/* Demo mode banner */}
+        {demoMode && (
+          <motion.div
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="max-w-3xl mx-auto mb-4 p-4 border-2 border-gold/30 rounded-xl bg-gold/[0.06] text-center"
+          >
+            <p className="text-sm text-gold font-display font-semibold">
+              {demoMode.emoji} You're viewing {demoMode.name}'s cosmic chart
+            </p>
+            <p className="text-xs text-cream-dim mt-1">
+              {demoMode.tagline}
+            </p>
+            <p className="text-xs text-cream-dim/60 mt-2">
+              Want your own? <button onClick={() => { setDemoMode(null); setDob(''); setTob(''); setLocation(''); setCoordsResolved(false); setWeeklyWindows([]); setResults(null); setDecisionResult(null); }} className="text-gold underline underline-offset-2">Enter your birth details below ↓</button>
+            </p>
+          </motion.div>
+        )}
+
         <Hero />
 
         <div className="max-w-3xl mx-auto">
@@ -413,26 +577,101 @@ export default function AppPage() {
               isAuthed={!!user}
             />
 
-            {/* CTA gate — after calculation, show notification CTA + redirect to dashboard */}
+            {/* ── After calculation: results + free cards + auth prompt ─── */}
             {weeklyWindows.length > 0 && (
               <div ref={ctaRef} style={{ marginTop: 34 }}>
-                <NotificationCTA botUsername={botUsername} uid={user?.uid ?? null} telegramLinked={telegramLinked} />
-                <div style={{ textAlign: 'center', marginTop: 21 }}>
-                  <button
-                    onClick={goToDashboard}
-                    disabled={navigatingToDash}
-                    className="px-8 py-4 bg-gold text-space-bg font-bold uppercase tracking-widest text-sm rounded-full shadow-[0_0_15px_rgba(212,168,75,0.5)] hover:shadow-[0_0_30px_rgba(212,168,75,0.8)] transition-all cursor-pointer disabled:opacity-60"
-                  >
-                    {navigatingToDash ? (
-                      <span className="flex items-center gap-3">
-                        <span className="w-4 h-4 border-2 border-space-bg/40 border-t-space-bg rounded-full animate-spin" />
-                        Loading Your Dashboard…
-                      </span>
-                    ) : (
-                      '✦ View My Golden Hours'
-                    )}
-                  </button>
+                {/* Today's top windows — visible to everyone, no auth */}
+                <div className="mb-6">
+                  <TodaySummary windows={weeklyWindows} />
                 </div>
+
+                {/* Free Timecept Cards — Golden Hour + SWOT Analysis */}
+                {(() => {
+                  const todayStr = new Date().toDateString();
+                  const now = new Date().getHours();
+                  const topWin = weeklyWindows
+                    .filter(w => new Date(w.date).toDateString() === todayStr && w.hour >= now)
+                    .sort((a, b) => b.score - a.score)[0] ?? null;
+
+                  const svc = SERVICES.find(s => s.id === selectedService);
+                  const svcData = topWin ? (PLANET_SERVICE_DATA[topWin.horaRuler]?.[selectedService]) : null;
+
+                  // Count golden hours remaining today (score >= 80)
+                  const remainingGoldenHours = weeklyWindows
+                    .filter(w => new Date(w.date).toDateString() === todayStr && w.hour >= now && w.score >= 80)
+                    .length;
+
+                  // Build today's 24-hour window slots
+                  const todayWindows = Array.from({ length: 24 }, (_, h) => {
+                    const win = weeklyWindows.find(w =>
+                      new Date(w.date).toDateString() === todayStr && w.hour === h
+                    );
+                    return {
+                      hour: h,
+                      score: win?.score ?? 0,
+                      horaRuler: win?.horaRuler ?? '',
+                      activity: win?.activity ?? 'rest',
+                    };
+                  });
+
+                  const freeData: FreeCardsData = {
+                    goldenHour: topWin ? {
+                      score: topWin.score,
+                      hour: topWin.hour,
+                      horaRuler: topWin.horaRuler,
+                      serviceName: svc?.name ?? 'Activity',
+                      serviceIcon: svc?.icon ?? '⏰',
+                      activity: svcData?.activity ?? 'Best activity',
+                    } : null,
+                    todayWindows,
+                    swotServices,
+                    swotMatrix: swotMatrix ?? undefined,
+                    userName: demoMode ? demoMode.name : user?.displayName ?? undefined,
+                    selectedService,
+                    isAuthed: !!user,
+                    remainingGoldenHours,
+                  };
+
+                  return <FreeCards data={freeData} />;
+                })()}
+
+                {/* Auth prompt — sign in to save + unlock more */}
+                {!user && (
+                  <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="mb-6 p-5 border-2 border-gold/30 rounded-xl bg-gold/[0.04] text-center">
+                    <p className="font-display font-semibold text-gold mb-1">Save your chart & unlock 3 free days</p>
+                    <p className="text-xs text-cream-dim mb-4">Sign in to access your dashboard, weekly view, Act or Wait?, Life Plans & more</p>
+                    <button
+                      onClick={() => signInWithGoogle().catch(console.warn)}
+                      className="inline-flex items-center gap-2 px-6 py-3 bg-gold text-space-bg font-bold uppercase tracking-widest text-sm rounded-full shadow-[0_0_15px_rgba(212,168,75,0.5)] hover:shadow-[0_0_30px_rgba(212,168,75,0.8)] transition-all"
+                    >
+                      <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 11h8.533c.044.385.067.78.067 1.184 0 5.368-3.6 9.184-8.6 9.184-5.04 0-9-4.04-9-9s3.96-9 9-9c2.32 0 4.4.86 6.014 2.28l-2.6 2.6A5.25 5.25 0 0 0 12 6.75 5.25 5.25 0 0 0 6.75 12 5.25 5.25 0 0 0 12 17.25c2.64 0 4.58-1.585 5.084-3.75H12V11z"/></svg>
+                      Sign In with Google
+                    </button>
+                  </motion.div>
+                )}
+
+                {/* Authenticated: show notification CTA + dashboard button */}
+                {user && (
+                  <>
+                    <NotificationCTA botUsername={botUsername} uid={user.uid} telegramLinked={telegramLinked} />
+                    <div style={{ textAlign: 'center', marginTop: 21 }}>
+                      <button
+                        onClick={goToDashboard}
+                        disabled={navigatingToDash}
+                        className="px-8 py-4 bg-gold text-space-bg font-bold uppercase tracking-widest text-sm rounded-full shadow-[0_0_15px_rgba(212,168,75,0.5)] hover:shadow-[0_0_30px_rgba(212,168,75,0.8)] transition-all cursor-pointer disabled:opacity-60"
+                      >
+                        {navigatingToDash ? (
+                          <span className="flex items-center gap-3">
+                            <span className="w-4 h-4 border-2 border-space-bg/40 border-t-space-bg rounded-full animate-spin" />
+                            Loading Your Dashboard…
+                          </span>
+                        ) : (
+                          '✦ View My Golden Hours'
+                        )}
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
             )}
 
@@ -441,7 +680,7 @@ export default function AppPage() {
               <div style={{ marginTop: 24 }}>
                 <button
                   onClick={() => setShowTraditional(v => !v)}
-                  className="w-full flex items-center justify-between gap-2 px-4 py-2.5 bg-white/[0.025] border border-white/[0.07] rounded-lg cursor-pointer font-mono text-[11px] font-bold tracking-widest uppercase text-cream-dim/45"
+                  className="w-full flex items-center justify-between gap-2 px-4 py-2.5 bg-white/[0.025] border border-white/[0.07] rounded-lg cursor-pointer font-mono text-xs font-bold tracking-widest uppercase text-cream-dim/60"
                 >
                   <span>Traditional Method (Chaldean Hora)</span>
                   <span className="text-sm">{showTraditional ? '↑' : '↓'}</span>
@@ -471,9 +710,9 @@ export default function AppPage() {
         </Link>
         <div className="flex flex-col md:flex-row items-center gap-3 sm:gap-4 font-mono text-xs sm:text-sm text-cream-dim tracking-widest uppercase">
           <button onClick={() => setHiwOpen(true)} className="hover:text-gold transition-colors">⚙️ How It Works</button>
-          <span className="hidden md:inline opacity-30">·</span>
+          <span className="hidden md:inline opacity-50">·</span>
           <a href="https://timecept.com" target="_blank" rel="noopener noreferrer" className="hover:text-gold transition-colors">timecept.com</a>
-          <span className="hidden md:inline opacity-30">·</span>
+          <span className="hidden md:inline opacity-50">·</span>
           <span>© 2026</span>
         </div>
       </footer>

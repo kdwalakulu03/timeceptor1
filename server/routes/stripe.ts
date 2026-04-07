@@ -3,11 +3,12 @@
  *
  * Stripe Checkout integration — "Unlock Your Golden Hours"
  *
- * POST /api/stripe/create-checkout   — Create a Stripe Checkout Session ($0.99 one-time)
+ * POST /api/stripe/create-checkout   — Create a Stripe Checkout Session (Silver or Gold)
  * POST /api/stripe/webhook           — Stripe webhook (confirms payment → sets paid_until)
  *
- * Product: $0.99 one-time payment → 90 days of full access (all pre-calculated windows).
- * Free users see 3 rolling days. Paid users see all 90 days.
+ * Tiers:
+ *   Silver — $9.99 one-time → 90 days of full access
+ *   Gold   — $77.00 one-time → 365 days of full access + precision mode
  */
 
 import { Router, Request, Response } from 'express';
@@ -30,8 +31,30 @@ function getStripe(): Stripe | null {
   return new Stripe(stripeSecretKey);
 }
 
+/* ── Tier config ───────────────────────────────────────────────────────────── */
+interface TierConfig {
+  amount: number;        // cents
+  days: number;
+  name: string;
+  description: string;
+}
+const TIERS: Record<string, TierConfig> = {
+  silver: {
+    amount: 999,          // $9.99
+    days: 90,
+    name: 'Silver — 90 Days',
+    description: '90 days of full planetary timing — all 8 services, SWOT, pattern detection.',
+  },
+  gold: {
+    amount: 7700,         // $77.00
+    days: 365,
+    name: 'Gold — 1 Year',
+    description: '365 days of ultra-precise timing — seasonal patterns, zero false positives, priority support.',
+  },
+};
+
 // ── POST /create-checkout ─────────────────────────────────────────────────────
-// Requires Firebase auth. Creates a Stripe Checkout Session for $0.99 one-time.
+// Requires Firebase auth. Creates a Stripe Checkout Session for Silver or Gold.
 router.post(
   '/create-checkout',
   requireAuth as any,
@@ -57,8 +80,14 @@ router.post(
       });
     }
 
+    // Determine tier (default to silver for backwards compat)
+    const tierKey = (req.body?.tier ?? 'silver') as string;
+    const tier = TIERS[tierKey];
+    if (!tier) {
+      return res.status(400).json({ error: `Unknown tier: ${tierKey}. Use 'silver' or 'gold'.` });
+    }
+
     try {
-      // Determine the success/cancel URLs
       const origin = req.headers.origin
         || `${req.protocol}://${req.get('host')}`;
 
@@ -69,21 +98,23 @@ router.post(
           {
             price_data: {
               currency: 'usd',
-              unit_amount: 99, // $0.99 in cents
+              unit_amount: tier.amount,
               product_data: {
-                name: 'Unlock Your Golden Hours',
-                description: '90 days of full planetary timing access — all windows, all services.',
+                name: tier.name,
+                description: tier.description,
               },
             },
             quantity: 1,
           },
         ],
         metadata: {
-          uid, // So the webhook knows which user paid
+          uid,
+          tier: tierKey,
+          days: String(tier.days),
         },
         customer_email: user.email || undefined,
-        success_url: `${origin}/dashboard?payment=success`,
-        cancel_url:  `${origin}/dashboard?payment=cancelled`,
+        success_url: `${origin}/checkout?payment=success`,
+        cancel_url:  `${origin}/checkout?payment=cancelled`,
       });
 
       return res.json({ url: session.url });
@@ -134,17 +165,19 @@ router.post(
       }
 
       if (session.payment_status === 'paid') {
-        console.log(`[stripe/webhook] ✦ Payment confirmed for uid=${uid}`);
+        const tierKey = session.metadata?.tier ?? 'silver';
+        const days = parseInt(session.metadata?.days ?? '90', 10);
+        console.log(`[stripe/webhook] ✦ Payment confirmed for uid=${uid} tier=${tierKey} days=${days}`);
 
         try {
-          // Grant 90 days of access
-          const paidUntil = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
+          // Grant access based on tier
+          const paidUntil = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
           await Users.setPaidUntil(uid, paidUntil.toISOString());
-          console.log(`[stripe/webhook] uid=${uid} paid_until=${paidUntil.toISOString()}`);
+          console.log(`[stripe/webhook] uid=${uid} paid_until=${paidUntil.toISOString()} (${tierKey})`);
 
-          // Trigger full 90-day score generation in background
-          ensureTransitsCurrent(90)
-            .then(() => generateUserScores(uid, 90))
+          // Trigger score generation in background (use tier days)
+          ensureTransitsCurrent(days)
+            .then(() => generateUserScores(uid, days))
             .then((n) => console.log(`[stripe/webhook] uid=${uid} generated ${n} scores`))
             .catch((err) => console.error(`[stripe/webhook] score generation failed uid=${uid}:`, err));
         } catch (err) {

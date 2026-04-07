@@ -229,3 +229,8 @@ To activate Google Sign-In:
 - Analytics (already tracking page views)
 - Future: Push notifications via FCM
 
+to deploy quickly>>>>
+cd /home/ubuntu/store1/lab2/timeceptor && npm run build
+
+then>>> 
+pm2 reload timeceptor && sleep 2 && pm2 status

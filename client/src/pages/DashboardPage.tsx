@@ -29,7 +29,6 @@ export default function DashboardPage() {
   const [pushEnabled, setPushEnabled] = useState(false);
   const [accessDays, setAccessDays] = useState(3);
   const [hasPaid, setHasPaid] = useState(false);
-  const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [hiwOpen, setHiwOpen] = useState(false);
   const [birthData, setBirthData] = useState<{
     birthDate: string; birthTime: string; lat: number; lng: number; locationName: string;
@@ -109,35 +108,10 @@ export default function DashboardPage() {
     }
   }, []);
 
-  // Stripe checkout handler — "Unlock Your Golden Hours"
-  const handleUnlock = useCallback(async () => {
-    if (!user) return;
-    setCheckoutLoading(true);
-    try {
-      const token = await user.getIdToken();
-      const res = await fetch('/api/stripe/create-checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      if (data.alreadyPaid) {
-        setHasPaid(true);
-        setAccessDays(90);
-        return;
-      }
-      if (data.url) {
-        window.location.href = data.url; // Redirect to Stripe Checkout
-      } else {
-        alert('Something went wrong — please try again.');
-      }
-    } catch (e) {
-      console.warn('[stripe]', e);
-      alert('Could not connect to payment server. Please try again later.');
-    } finally {
-      setCheckoutLoading(false);
-    }
-  }, [user]);
+  // Unlock handler — navigate to /checkout page
+  const handleUnlock = useCallback(() => {
+    navigate('/checkout');
+  }, [navigate]);
 
   // Compute windows client-side when birth data or service selection changes
   // Paid users get 90 days, free users get 7 days
@@ -224,15 +198,13 @@ export default function DashboardPage() {
           <img src="/logo.png" alt="" className="h-10 w-10 sm:h-20 sm:w-20 object-contain drop-shadow-[0_0_20px_rgba(244,161,29,0.6)]" />
           <div className="flex flex-col">
             <span className="text-xl sm:text-2xl tracking-widest uppercase text-gold font-display font-semibold">Timeceptor</span>
-            <a href="https://timecept.com" target="_blank" rel="noopener noreferrer" className="font-mono text-[9px] sm:text-[10px] tracking-widest text-cream-dim/50 hover:text-gold/70 transition-colors">by timecept.com</a>
+            <a href="https://timecept.com" target="_blank" rel="noopener noreferrer" className="font-mono text-[10px] sm:text-xs tracking-widest text-cream-dim/60 hover:text-gold/70 transition-colors font-medium">by timecept.com</a>
           </div>
         </Link>
         <div className="flex items-center gap-2 sm:gap-3">
-          {hasPaid && (
-            <Link to="/swot" className="hidden sm:flex items-center gap-2 font-mono text-sm text-gold tracking-widest uppercase border-2 border-gold/55 rounded-full px-5 py-2.5 hover:border-gold/90 hover:bg-gold/10 hover:text-gold-light transition-all">
-              ✦ SWOT Analysis
-            </Link>
-          )}
+          <Link to="/swot" className="hidden sm:flex items-center gap-2 font-mono text-sm text-gold tracking-widest uppercase border-2 border-gold/55 rounded-full px-5 py-2.5 hover:border-gold/90 hover:bg-gold/10 hover:text-gold-light transition-all">
+            ✦ SWOT Analysis
+          </Link>
           <Link to="/decide" className="hidden sm:flex items-center gap-2 font-mono text-sm text-cream-dim tracking-widest uppercase border-2 border-gold/35 rounded-full px-5 py-2.5 hover:border-gold/70 hover:text-gold hover:bg-gold/5 transition-all">
             🎯 Act or Wait?
           </Link>
@@ -256,15 +228,13 @@ export default function DashboardPage() {
             </button>
             {userMenuOpen && (
               <div className="absolute right-0 top-full mt-2 w-44 bg-space-card border border-gold/20 rounded-sm shadow-xl z-50">
-                {hasPaid && (
-                  <Link
-                    to="/swot"
-                    onClick={() => setUserMenuOpen(false)}
-                    className="block w-full text-left px-4 py-3 font-mono text-xs tracking-widest uppercase text-gold hover:text-gold-light hover:bg-gold/5 transition-colors border-b border-gold/10"
-                  >
-                    ✦ SWOT Analysis
-                  </Link>
-                )}
+                <Link
+                  to="/swot"
+                  onClick={() => setUserMenuOpen(false)}
+                  className="block w-full text-left px-4 py-3 font-mono text-xs tracking-widest uppercase text-gold hover:text-gold-light hover:bg-gold/5 transition-colors border-b border-gold/10"
+                >
+                  ✦ SWOT Analysis
+                </Link>
                 <Link
                   to="/app"
                   onClick={() => setUserMenuOpen(false)}
@@ -373,33 +343,53 @@ export default function DashboardPage() {
           </motion.div>
         )}
 
-        {/* SWOT Analysis CTA for non-paid users */}
-        {!hasPaid && windows.length > 0 && (
+        {/* ── Product Showroom: 4 equal-weight cards ──────────────── */}
+        {windows.length > 0 && (
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.12 }}
-            className="mb-6"
+            className="mb-6 sm:mb-8"
           >
-            <button
-              onClick={() => document.getElementById('results-section')?.scrollIntoView({ behavior: 'smooth' })}
-              className="w-full p-5 border-2 border-indigo-500/30 rounded-lg bg-indigo-500/[0.06] hover:bg-indigo-500/[0.12] hover:border-indigo-500/50 transition-all text-left flex items-center gap-4 group"
-            >
-              <div className="w-12 h-12 rounded-full bg-indigo-500/20 flex items-center justify-center text-2xl flex-shrink-0 group-hover:scale-110 transition-transform">
-                ✦
-              </div>
-              <div className="flex-1">
-                <div className="font-mono text-sm tracking-widest uppercase text-indigo-300 font-bold mb-1">
-                  SWOT Analysis About You
-                </div>
-                <p className="text-xs text-cream-dim leading-relaxed">
-                  Discover your Strengths, Weaknesses, Opportunities & Threats across 90 days × 8 life domains
-                </p>
-              </div>
-              <svg className="w-5 h-5 text-indigo-400 flex-shrink-0 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
+            <div className="font-mono text-xs tracking-widest uppercase text-gold/70 mb-3 font-medium">Your Products</div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {/* Golden Hours */}
+              <Link to="/app" className="group p-4 border border-gold/20 rounded-xl bg-gold/[0.03] hover:bg-gold/[0.08] hover:border-gold/40 transition-all">
+                <div className="text-2xl mb-2">⏰</div>
+                <div className="font-mono text-xs tracking-widest uppercase text-gold font-bold mb-0.5">Golden Hours</div>
+                <p className="font-mono text-[10px] text-cream-dim/70 leading-relaxed">3-day rolling best times</p>
+                {(() => {
+                  const todayStr = new Date().toDateString();
+                  const best = windows.filter(w => new Date(w.date).toDateString() === todayStr).sort((a,b)=>b.score-a.score)[0];
+                  return best ? (
+                    <div className={`mt-2 font-mono text-sm font-bold tabular-nums ${best.score >= 62 ? 'text-emerald-400' : best.score >= 45 ? 'text-gold' : 'text-amber-400'}`}>
+                      Top: {best.score}/100
+                    </div>
+                  ) : null;
+                })()}
+              </Link>
+              {/* SWOT Analysis */}
+              <Link to="/swot" className="group p-4 border border-indigo-500/20 rounded-xl bg-indigo-500/[0.03] hover:bg-indigo-500/[0.08] hover:border-indigo-500/40 transition-all">
+                <div className="text-2xl mb-2">✦</div>
+                <div className="font-mono text-xs tracking-widest uppercase text-indigo-300 font-bold mb-0.5">SWOT Analysis</div>
+                <p className="font-mono text-[10px] text-cream-dim/70 leading-relaxed">90-day personality matrix</p>
+                {!hasPaid && <div className="mt-2 font-mono text-[10px] text-gold tracking-widest font-bold"><Link to="/checkout">🔓 Unlock</Link></div>}
+              </Link>
+              {/* Act or Wait */}
+              <Link to="/decide" className="group p-4 border border-emerald-500/20 rounded-xl bg-emerald-500/[0.03] hover:bg-emerald-500/[0.08] hover:border-emerald-500/40 transition-all">
+                <div className="text-2xl mb-2">🎯</div>
+                <div className="font-mono text-xs tracking-widest uppercase text-emerald-300 font-bold mb-0.5">Act or Wait?</div>
+                <p className="font-mono text-[10px] text-cream-dim/70 leading-relaxed">Instant decision engine</p>
+                <div className="mt-2 font-mono text-[10px] text-emerald-400 tracking-widest font-bold">FREE</div>
+              </Link>
+              {/* Life Blueprints */}
+              <Link to="/plans" className="group p-4 border border-purple-500/20 rounded-xl bg-purple-500/[0.03] hover:bg-purple-500/[0.08] hover:border-purple-500/40 transition-all">
+                <div className="text-2xl mb-2">📋</div>
+                <div className="font-mono text-xs tracking-widest uppercase text-purple-300 font-bold mb-0.5">Life Blueprints</div>
+                <p className="font-mono text-[10px] text-cream-dim/70 leading-relaxed">Personalized life plans</p>
+                <div className="mt-2 font-mono text-[10px] text-purple-400 tracking-widest font-bold">FREE</div>
+              </Link>
+            </div>
           </motion.div>
         )}
 
@@ -469,9 +459,9 @@ export default function DashboardPage() {
         </Link>
         <div className="flex flex-col md:flex-row items-center gap-3 md:gap-4 font-mono text-xs text-cream-dim tracking-widest uppercase">
           <button onClick={() => setHiwOpen(true)} className="hover:text-gold transition-colors">⚙️ How It Works</button>
-          <span className="hidden md:inline opacity-30">·</span>
+          <span className="hidden md:inline opacity-50">·</span>
           <a href="https://timecept.com" target="_blank" rel="noopener noreferrer" className="hover:text-gold transition-colors">timecept.com</a>
-          <span className="hidden md:inline opacity-30">·</span>
+          <span className="hidden md:inline opacity-50">·</span>
           <span>© 2026</span>
         </div>
       </footer>

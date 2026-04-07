@@ -109,7 +109,7 @@ export function CosmicForm({
       </div>
 
       {/* Service Selector */}
-      <ServiceSelector selected={selectedService} onSelect={setSelectedService} />
+      <ServiceSelector selected={selectedService} onSelect={setSelectedService} isAuthed={isAuthed} />
 
       {/* Date + Time */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
