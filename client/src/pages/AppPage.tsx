@@ -9,7 +9,7 @@
  *   - Free sharable Golden Hour + Act-or-Wait cards
  */
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'motion/react';
 import type { User } from 'firebase/auth';
 import { onAuthChange, signInWithGoogle, signOutUser } from '../firebase';
@@ -73,6 +73,15 @@ export default function AppPage() {
 
   // Preload logo for card rendering
   useEffect(() => { preloadLogo(); }, []);
+
+  // Scroll to hash anchor (e.g. /app#form)
+  const { hash } = useLocation();
+  useEffect(() => {
+    if (hash) {
+      const el = document.querySelector(hash);
+      if (el) setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 500);
+    }
+  }, [hash]);
 
   // ── Firebase Auth ──────────────────────────────────────────────────────
   const [user, setUser] = useState<User | null>(null);
@@ -551,7 +560,7 @@ export default function AppPage() {
 
         <Hero />
 
-        <div className="max-w-3xl mx-auto">
+        <div id="form" className="max-w-3xl mx-auto scroll-mt-4">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}

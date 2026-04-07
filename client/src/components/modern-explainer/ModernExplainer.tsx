@@ -748,7 +748,7 @@ export default function ModernExplainer() {
 
   return (
     <div 
-      className="relative w-full aspect-[3/4] sm:aspect-video bg-[#030308] border border-white/10 rounded-2xl md:rounded-[2rem] overflow-hidden shadow-2xl group selection:bg-gold/30 cursor-pointer"
+      className="relative w-full aspect-video bg-[#030308] border border-white/10 rounded-2xl md:rounded-[2rem] overflow-hidden shadow-2xl group selection:bg-gold/30 cursor-pointer"
       onClick={() => setIsPaused(!isPaused)}
     >
       {/* Background ambient glow */}

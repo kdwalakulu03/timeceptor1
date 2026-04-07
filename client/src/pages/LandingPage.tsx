@@ -251,7 +251,7 @@ export default function LandingPage() {
             </p>
             <p className="text-sm text-cream-dim/70 mb-6 font-mono tracking-widest">Just your birth date, time and city. That's all.</p>
             <Link
-              to="/app"
+              to="/app#form"
               className="inline-block px-10 sm:px-16 py-4 sm:py-5 bg-gold text-space-bg font-mono text-sm sm:text-base font-bold tracking-widest uppercase hover:bg-gold-light transition-all shadow-[0_0_40px_rgba(212,168,75,0.4)] hover:shadow-[0_0_60px_rgba(212,168,75,0.7)] rounded-full"
             >
               ✦ View Your Story in 2 Mins Free
@@ -388,14 +388,14 @@ export default function LandingPage() {
             ))}
           </div>
           <div className="max-w-md mx-auto mb-6">
-            <Link to="/app" className="block text-center px-8 py-4 bg-gold text-space-bg font-bold uppercase tracking-widest text-sm rounded-full shadow-[0_0_20px_rgba(212,168,75,0.5)] hover:shadow-[0_0_40px_rgba(212,168,75,0.8)] hover:scale-105 transition-all">
+            <Link to="/app#form" className="block text-center px-8 py-4 bg-gold text-space-bg font-bold uppercase tracking-widest text-sm rounded-full shadow-[0_0_20px_rgba(212,168,75,0.5)] hover:shadow-[0_0_40px_rgba(212,168,75,0.8)] hover:scale-105 transition-all">
               ✦ Get Mine Free
             </Link>
           </div>
           <p className="font-mono text-[10px] sm:text-xs text-cream-dim/70 tracking-wider mb-8 font-medium">No card required · Enter birth details · Results in seconds</p>
 
           <div className="grid grid-cols-3 gap-3 sm:gap-6 max-w-2xl mx-auto border-t border-gold/10 pt-8">
-            {[{num:'7',label:'Vedic Planets'},{num:'168',label:'Hours / Week'},{num:'90',label:'Days Ahead'}].map(s => (
+            {[{num:'9',label:'Vedic Planets'},{num:'168',label:'Hours / Week'},{num:'90',label:'Days Ahead'}].map(s => (
               <motion.div key={s.label} initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="py-4 sm:py-6">
                 <div className="text-2xl sm:text-3xl font-display font-semibold text-gold mb-1">{s.num}</div>
                 <div className="font-mono text-[10px] sm:text-xs tracking-widest uppercase text-cream-dim">{s.label}</div>
