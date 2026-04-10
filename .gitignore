@@ -29,3 +29,6 @@ logs/
 
 # Temp working files
 Gemini_Generated_Image_*.png
+
+# Secret files backup — NEVER commit
+rahas/
