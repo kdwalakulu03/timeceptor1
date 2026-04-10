@@ -354,8 +354,8 @@ export default function ResultsMainVisitorPage() {
             </div>
           </div>
 
-          {/* Two buttons side by side */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {/* Desktop: two generate buttons */}
+          <div className="hidden sm:grid grid-cols-2 gap-3">
             {/* ⚡ Quick Generate — zero friction */}
             <button
               onClick={() => setActiveProduct('reel')}
@@ -411,7 +411,7 @@ export default function ResultsMainVisitorPage() {
                       onChange={handleAvatarUpload}
                       className="hidden"
                     />
-                    <span className="font-mono text-[8px] text-cream-dim/30 hidden sm:inline">1:1 · max 1 MB</span>
+                    <span className="font-mono text-[8px] text-cream-dim/30">1:1 · max 1 MB</span>
                   </div>
                 </div>
 
@@ -423,6 +423,29 @@ export default function ResultsMainVisitorPage() {
                   Generate →
                 </button>
               </div>
+            </div>
+          </div>
+
+          {/* Mobile: laptop notice + share card shortcut */}
+          <div className="sm:hidden rounded-xl border-2 border-gold/20 bg-gold/[0.04] p-5">
+            <div className="flex flex-col items-center text-center gap-3">
+              <span className="text-3xl">💻</span>
+              <p className="text-sm text-cream font-display font-semibold">
+                Reel generation works best on a laptop
+              </p>
+              <p className="text-[11px] text-cream-dim/50 font-mono leading-relaxed max-w-[280px]">
+                Open this page on your laptop or desktop for the full video reel experience.
+              </p>
+              <div className="w-full h-px bg-white/[0.06] my-1" />
+              <p className="text-[11px] text-cream-dim/60 font-mono">
+                Meanwhile, download a shareable card instantly 👇
+              </p>
+              <button
+                onClick={() => setActiveProduct('photo-card')}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-full border border-gold/30 bg-gold/10 text-gold text-xs font-mono tracking-widest uppercase hover:bg-gold/20 hover:border-gold/50 transition-all"
+              >
+                🎨 Download Share Card
+              </button>
             </div>
           </div>
         </motion.div>
