@@ -193,6 +193,14 @@ function DayBars({ windows, height, dim, nowHour, isToday }: {
         <div style={{ position: 'absolute', top: 0, left: `${(6 / 24) * 100}%`, width: 1, height, background: 'rgba(244,161,29,0.25)', pointerEvents: 'none' }} />
         <div style={{ position: 'absolute', top: 0, left: `${(18 / 24) * 100}%`, width: 1, height, background: 'rgba(139,180,248,0.25)', pointerEvents: 'none' }} />
 
+        {/* Sun & Moon markers */}
+        {height >= 50 && (
+          <>
+            <div style={{ position: 'absolute', bottom: -18, left: `${(6 / 24) * 100}%`, transform: 'translateX(-50%)', fontSize: 14, pointerEvents: 'none', lineHeight: 1 }}>☀️</div>
+            <div style={{ position: 'absolute', bottom: -18, left: `${(18 / 24) * 100}%`, transform: 'translateX(-50%)', fontSize: 14, pointerEvents: 'none', lineHeight: 1 }}>🌙</div>
+          </>
+        )}
+
         {/* Current-hour needle */}
         {isToday && (
           <div style={{
@@ -206,7 +214,7 @@ function DayBars({ windows, height, dim, nowHour, isToday }: {
         )}
       </div>
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, fontFamily: FONT, color: C.textDim, marginTop: 3, fontWeight: 500 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: height >= 50 ? 11 : 9, fontFamily: FONT, color: C.textDim, marginTop: height >= 50 ? 22 : 3, fontWeight: 500 }}>
         <span>00</span>
         <span style={{ color: 'rgba(244,161,29,0.60)' }}>06</span>
         <span>12</span>
@@ -306,7 +314,7 @@ function DayExpander({ day, nowHour, onClose, userRating, onRate }: {
       }}>
         {/* Header row with close */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.10em', textTransform: 'uppercase', color: C.gold }}>
+          <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: '0.10em', textTransform: 'uppercase', color: C.gold }}>
             {day.isToday ? "Today's Detail" : `${day.dayName} ${day.dateLabel}`}
           </div>
           <button onClick={(e) => { e.stopPropagation(); onClose(); }} style={{
@@ -317,16 +325,13 @@ function DayExpander({ day, nowHour, onClose, userRating, onRate }: {
           </button>
         </div>
 
-        {/* Enlarged bar chart */}
-        <DayBars windows={day.allWindows} height={72} dim={false} nowHour={nowHour} isToday={day.isToday} />
-
         {/* Day rating bar — interactive */}
         <div style={{ marginTop: 10, marginBottom: 10 }}>
           <RatingBar rating={rating} userRating={userRating} onRate={onRate} />
         </div>
 
         {/* Top windows — pill chips */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
           {top6.map((w, i) => {
             const actColor = ACTIVITY_COLOR[w.activity];
             const peak = i === 0;
@@ -334,59 +339,65 @@ function DayExpander({ day, nowHour, onClose, userRating, onRate }: {
             const isNow = day.isToday && w.hour === nowHour;
             return (
               <div key={i} style={{
-                display: 'flex', alignItems: 'center', gap: 5,
-                padding: '4px 9px', borderRadius: 14,
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: '6px 12px', borderRadius: 16,
                 border: `1px solid ${peak ? C.borderPeak : C.border}`,
+                background: peak ? 'rgba(244,161,29,0.06)' : 'transparent',
                 opacity: past ? 0.3 : 1,
                 transition: 'opacity 0.3s',
                 fontFamily: FONT,
               }}>
-                {peak && <Zap size={9} color={C.gold} />}
+                {peak && <Zap size={12} color={C.gold} />}
                 {isNow && (
-                  <span style={{ fontSize: 7, fontWeight: 700, color: C.gold, letterSpacing: '0.06em', background: 'rgba(244,161,29,0.12)', padding: '1px 4px', borderRadius: 3 }}>NOW</span>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: C.gold, letterSpacing: '0.06em', background: 'rgba(244,161,29,0.12)', padding: '2px 6px', borderRadius: 4 }}>NOW</span>
                 )}
-                <span style={{ fontSize: 13, fontWeight: 700, color: peak ? C.gold : C.text }}>
+                <span style={{ fontSize: 15, fontWeight: 700, color: peak ? C.gold : C.text }}>
                   {fmt24(w.hour)}
                 </span>
-                <span style={{ fontSize: 9, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', color: actColor }}>
+                <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', color: actColor }}>
                   {w.activity === 'social_media' ? 'social' : w.activity}
                 </span>
-                <span style={{ fontSize: 10, color: C.textDim }}>{w.horaRuler}</span>
-                <span style={{ fontSize: 11, color: C.gold, fontWeight: 700 }}>{w.score}</span>
-                {/* Extra transit tag */}
-                {w.planets.length > 0 && (
-                  <span style={{
-                    fontSize: 8, color: C.emerald, fontWeight: 500,
-                    background: 'rgba(32,197,160,0.08)',
-                    padding: '1px 5px', borderRadius: 3, maxWidth: 90,
-                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                  }}>
-                    {w.planets[0]}
-                  </span>
-                )}
-                {w.isMorning && !past && <span style={{ fontSize: 9 }}>☀</span>}
+                <span style={{ fontSize: 12, color: C.textDim }}>{w.horaRuler}</span>
+                <span style={{ fontSize: 13, color: C.gold, fontWeight: 700 }}>{w.score}</span>
+                {w.isMorning && !past && <span style={{ fontSize: 11 }}>☀</span>}
               </div>
             );
           })}
         </div>
 
-        {/* Transit signals summary */}
+        {/* Transit & context insights — up to 3, readable size */}
         {(() => {
           const allSignals = day.allWindows.flatMap(w => w.planets).filter(Boolean);
-          const unique = [...new Set(allSignals)].slice(0, 5);
-          if (unique.length === 0) return null;
+          const unique = [...new Set(allSignals)].slice(0, 3);
+          // Build contextual insights
+          const insights: { icon: string; text: string }[] = [];
+          if (unique.length > 0) {
+            unique.forEach(s => insights.push({ icon: '🪐', text: s }));
+          }
+          // Add morning vs evening comparison
+          const morningWins = day.allWindows.filter(w => w.hour >= 5 && w.hour < 12);
+          const eveningWins = day.allWindows.filter(w => w.hour >= 17 && w.hour < 23);
+          if (morningWins.length > 0 && eveningWins.length > 0) {
+            const mAvg = Math.round(morningWins.reduce((s, w) => s + w.score, 0) / morningWins.length);
+            const eAvg = Math.round(eveningWins.reduce((s, w) => s + w.score, 0) / eveningWins.length);
+            insights.push({ icon: mAvg >= eAvg ? '☀️' : '🌙', text: mAvg >= eAvg ? `Morning stronger (${mAvg} vs ${eAvg})` : `Evening stronger (${eAvg} vs ${mAvg})` });
+          }
+          const display = insights.slice(0, 3);
+          if (display.length === 0) return null;
           return (
-            <div style={{ marginTop: 10, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-              <span style={{ fontSize: 9, color: C.textDim, fontFamily: FONT, alignSelf: 'center', marginRight: 2 }}>Transits</span>
-              {unique.map((s, i) => (
-                <span key={i} style={{
-                  fontSize: 9, color: C.textMid, fontFamily: FONT,
+            <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {display.map((item, i) => (
+                <div key={i} style={{
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  padding: '6px 12px', borderRadius: 8,
                   background: 'rgba(255,255,255,0.04)',
-                  padding: '2px 7px', borderRadius: 3,
                   border: `1px solid ${C.border}`,
                 }}>
-                  {s}
-                </span>
+                  <span style={{ fontSize: 16 }}>{item.icon}</span>
+                  <span style={{ fontSize: 13, color: C.textMid, fontFamily: FONT, fontWeight: 500 }}>
+                    {item.text}
+                  </span>
+                </div>
               ))}
             </div>
           );
@@ -591,17 +602,17 @@ export function WeeklyView({ windows, unlockedDays = 3, onUnlock, user, selected
                     {String(day.startHour).padStart(2,'0')}–{String(day.endHour).padStart(2,'0')}
                   </div>
                 </div>
-                <DayBars windows={day.allWindows} height={26} dim={false} nowHour={nowHour} isToday={day.isToday} />
+                <DayBars windows={day.allWindows} height={isExpanded ? 72 : 26} dim={false} nowHour={nowHour} isToday={day.isToday} />
                 <div style={{ textAlign: 'right' }}>
                   <div style={{ fontSize: 14, lineHeight: 1 }}>{displayRating.emoji}</div>
                   <div style={{
-                    fontSize: 9, fontWeight: 600, color: displayRating.color,
+                    fontSize: 11, fontWeight: 600, color: displayRating.color,
                     letterSpacing: '0.04em', marginTop: 2,
                   }}>
                     {displayRating.label}
                   </div>
                   {savedRating !== null && (
-                    <div style={{ fontSize: 7, color: C.textDim, marginTop: 1 }}>✓ rated</div>
+                    <div style={{ fontSize: 9, color: C.textDim, marginTop: 1 }}>✓ rated</div>
                   )}
                 </div>
                 <motion.div

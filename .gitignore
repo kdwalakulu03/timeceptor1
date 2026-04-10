@@ -14,6 +14,7 @@ stripe.txt
 # data/ is your single source of truth for all app data
 data/subscribers.json
 data/firebase-service-account.json
+data/windows/firebase-service-account.json
 
 # PM2 logs
 logs/
@@ -25,3 +26,6 @@ logs/
 .env
 .env.local
 .env.production
+
+# Temp working files
+Gemini_Generated_Image_*.png

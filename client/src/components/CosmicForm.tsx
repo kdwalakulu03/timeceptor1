@@ -24,12 +24,17 @@ interface CosmicFormProps {
   onSelectLocation: (lat: number, lng: number, name: string) => void;
   calculateWindow: () => void;
   isAuthed: boolean;
+  /** When true, the built-in submit button is hidden (caller renders its own) */
+  hideSubmit?: boolean;
+  /** When true, ServiceSelector is hidden (for anonymous visitor flow) */
+  hideServiceSelector?: boolean;
 }
 
 export function CosmicForm({
   dob, setDob, tob, setTob, unknownTime, setUnknownTime,
   location, setLocation, selectedService, setSelectedService, isAuthed,
   geocodeStatus, onGeocode, onBrowserGeolocate, onSelectLocation, calculateWindow,
+  hideSubmit, hideServiceSelector,
 }: CosmicFormProps) {
 
   const [suggestions, setSuggestions]       = useState<GeoResult[]>([]);
@@ -109,7 +114,9 @@ export function CosmicForm({
       </div>
 
       {/* Service Selector */}
-      <ServiceSelector selected={selectedService} onSelect={setSelectedService} isAuthed={isAuthed} />
+      {!hideServiceSelector && (
+        <ServiceSelector selected={selectedService} onSelect={setSelectedService} isAuthed={isAuthed} />
+      )}
 
       {/* Date + Time */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
@@ -235,13 +242,15 @@ export function CosmicForm({
         )}
       </div>
 
-      <button
-        onClick={calculateWindow}
-        disabled={!dob}
-        className="w-full py-5 bg-gold text-space-bg font-mono text-sm font-bold tracking-widest uppercase cursor-pointer hover:bg-gold-light transition-all duration-300 shadow-lg shadow-gold/20 disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        ✦ Reveal My Cosmic Window
-      </button>
+      {!hideSubmit && (
+        <button
+          onClick={calculateWindow}
+          disabled={!dob}
+          className="w-full py-5 bg-gold text-space-bg font-mono text-sm font-bold tracking-widest uppercase cursor-pointer hover:bg-gold-light transition-all duration-300 shadow-lg shadow-gold/20 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          ✦ Reveal My Cosmic Window
+        </button>
+      )}
     </>
   );
 }

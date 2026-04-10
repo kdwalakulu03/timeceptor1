@@ -140,9 +140,6 @@ export function calculateChart(date: Date, latitude: number, longitude: number):
   };
 }
 
-/**
- * Calculates the actual sunrise for a given location and date.
- */
 export function getSunrise(date: Date, latitude: number, longitude: number): Date {
   const observer = new Astronomy.Observer(latitude, longitude, 0);
   const time = Astronomy.MakeTime(date);
@@ -250,5 +247,3 @@ export function computeDasha(moonSiderealLong: number, birthDate: Date): DashaPe
 
   return periods;
 }
-
-const TOTAL_YEARS = 120;

@@ -21,7 +21,6 @@ import { geocodeCity } from '../lib/geocoding';
 import { HourWindow } from '../types';
 import { Background } from '../components/Background';
 import { HowItWorksModal } from '../components/HowItWorksModal';
-import { Hero } from '../components/Hero';
 import { CosmicForm } from '../components/CosmicForm';
 import { ResultsDisplay } from '../components/ResultsDisplay';
 import { Legend } from '../components/Legend';
@@ -70,6 +69,14 @@ export default function AppPage() {
   // ── SWOT (8-service analysis — free for everyone) ──────────────────────
   const [swotServices, setSwotServices] = useState<SwotServiceSummary[]>([]);
   const [swotMatrix, setSwotMatrix] = useState<SwotMatrix | null>(null);
+
+  // ── Visitor flow: extras + gate ────────────────────────────────────────
+  const [extras, setExtras] = useState({ goldenHour: false, swot: false, photoCard: false });
+  const [visitorEmail, setVisitorEmail] = useState('');
+  const [mathA] = useState(() => Math.floor(Math.random() * 8) + 2);
+  const [mathB] = useState(() => Math.floor(Math.random() * 8) + 2);
+  const [mathAnswer, setMathAnswer] = useState('');
+  const [gateError, setGateError] = useState('');
 
   // Preload logo for card rendering
   useEffect(() => { preloadLogo(); }, []);
@@ -227,6 +234,40 @@ export default function AppPage() {
   // ── Core calculation — NO AUTH REQUIRED for 1-day results ─────────────
   const calculateWindow = async () => {
     if (!dob) return;
+
+    // ── Anonymous visitor flow: validate gate then redirect ──────────
+    if (!user) {
+      // Gate: require email OR correct math answer
+      const hasEmail = visitorEmail.trim().length > 0 && visitorEmail.includes('@');
+      const hasMath = parseInt(mathAnswer, 10) === mathA + mathB;
+      if (!hasEmail && !hasMath) {
+        setGateError('Enter your email or solve the math challenge to continue');
+        return;
+      }
+      setGateError('');
+
+      // Optionally save visitor email
+      if (hasEmail) {
+        fetch('/api/subscribe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: visitorEmail, service: selectedService }),
+        }).catch(() => {});
+      }
+
+      // Navigate to results page with birth data as URL params
+      const finalTob = unknownTime ? '12:00' : (tob || '12:00');
+      const params = new URLSearchParams();
+      params.set('dob', dob);
+      params.set('tob', finalTob);
+      params.set('lat', coords.lat.toFixed(4));
+      params.set('lng', coords.lng.toFixed(4));
+      if (location) params.set('loc', encodeURIComponent(location.split(',')[0].trim()));
+      params.set('service', selectedService);
+      navigate(`/results-main-visitor?${params.toString()}`);
+      return;
+    }
+
     // Auth is NOT required — anonymous users get 1-day free results
 
     const finalTob = unknownTime ? '12:00' : (tob || '12:00');
@@ -558,7 +599,42 @@ export default function AppPage() {
           </motion.div>
         )}
 
-        <Hero />
+        {/* Inline hero — value proposition for anonymous visitors */}
+        <motion.section
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15, duration: 0.5 }}
+          className="max-w-3xl mx-auto text-center pt-6 sm:pt-10 pb-6 sm:pb-8 px-2"
+        >
+          {/* Trust badges — BIG and prominent */}
+          <div className="flex flex-wrap justify-center gap-3 mb-5">
+            <span className="px-4 py-2 border-2 border-emerald-400/40 rounded-full bg-emerald-400/[0.06] text-emerald-400 font-mono text-xs sm:text-sm font-bold tracking-widest uppercase">
+              ✓ No Sign-in
+            </span>
+            <span className="px-4 py-2 border-2 border-emerald-400/40 rounded-full bg-emerald-400/[0.06] text-emerald-400 font-mono text-xs sm:text-sm font-bold tracking-widest uppercase">
+              ✓ No Credit Card
+            </span>
+            <span className="px-4 py-2 border-2 border-gold/40 rounded-full bg-gold/[0.06] text-gold font-mono text-xs sm:text-sm font-bold tracking-widest uppercase">
+              ⚡ Instant Results
+            </span>
+          </div>
+
+          <h1 className="font-display text-3xl sm:text-4xl md:text-5xl text-gold font-bold tracking-wider leading-tight mb-4">
+            Your <span className="underline decoration-gold/40 underline-offset-4">Personal</span> Vedic Profile
+          </h1>
+
+          <p className="text-cream/80 text-base sm:text-lg max-w-2xl mx-auto leading-relaxed mb-3">
+            Generic "12-sign" horoscopes are one-size-fits-all — they ignore your <em>exact</em> birth
+            time, coordinates, and planetary houses. That's why they feel vague.
+          </p>
+          <p className="text-cream-dim/70 text-sm sm:text-base max-w-xl mx-auto leading-relaxed mb-4">
+            Enter <strong className="text-gold">your</strong> birth details below to get a precise chart with
+            <span className="text-gold"> golden hours</span>, <span className="text-gold">SWOT analysis</span>,
+            <span className="text-gold"> dasha periods</span>, <span className="text-gold">predictions</span>,
+            <span className="text-gold"> health precautions</span>, <span className="text-gold">remedies</span> & more —
+            all calculated for <em>you</em>, not your zodiac sign.
+          </p>
+        </motion.section>
 
         <div id="form" className="max-w-3xl mx-auto scroll-mt-4">
           <motion.div
@@ -584,7 +660,152 @@ export default function AppPage() {
               onSelectLocation={handleSelectLocation}
               calculateWindow={calculateWindow}
               isAuthed={!!user}
+              hideSubmit={!user}
+              hideServiceSelector={!user}
             />
+
+            {/* ── Anonymous visitor gate: extras + email/math + big CTA ── */}
+            {!user && (
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.55 }}
+                className="mt-6 space-y-5"
+              >
+                {/* Astro products — always included, shown as on */}
+                <div>
+                  <p className="font-mono text-sm tracking-widest uppercase text-cream/60 mb-3 font-medium">
+                    Included in your report:
+                  </p>
+                  <div className="flex flex-wrap gap-2 mb-5">
+                    {[
+                      { icon: '🪐', label: 'Horoscope Chart' },
+                      { icon: '📅', label: 'Dasha Periods' },
+                      { icon: '⭐', label: 'Predictions' },
+                      { icon: '🩺', label: 'Health' },
+                      { icon: '🙏', label: 'Remedies' },
+                    ].map(item => (
+                      <span
+                        key={item.label}
+                        className="px-3 py-1.5 rounded-full border border-white/[0.12] bg-white/[0.03] text-sm text-cream-dim/70 flex items-center gap-1.5"
+                      >
+                        <span>{item.icon}</span> {item.label}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Timeceptor exclusive — slide-switch toggles, OFF by default, blinking */}
+                <div>
+                  <p className="font-mono text-sm tracking-widest uppercase text-gold/80 mb-3 font-semibold">
+                    ⏰ Timeceptor Exclusive — toggle to add:
+                  </p>
+                  <div className="flex flex-wrap gap-3">
+                    {[
+                      { key: 'goldenHour' as const, label: 'Golden Hours', icon: '✨' },
+                      { key: 'swot' as const, label: 'SWOT Analysis', icon: '⊞' },
+                      { key: 'photoCard' as const, label: 'Share Card', icon: '🎨' },
+                    ].map(opt => (
+                      <motion.button
+                        key={opt.key}
+                        type="button"
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => setExtras(prev => ({ ...prev, [opt.key]: !prev[opt.key] }))}
+                        className={`relative flex items-center gap-3 pl-3 pr-4 py-2.5 rounded-full border-2 text-sm font-semibold cursor-pointer transition-all duration-300 ${
+                          extras[opt.key]
+                            ? 'border-gold/60 bg-gold/[0.12] text-gold shadow-[0_0_18px_rgba(244,161,29,0.2)]'
+                            : 'border-white/[0.15] bg-white/[0.03] text-cream-dim/60 hover:border-gold/30'
+                        }`}
+                      >
+                        {/* iOS-style slide switch */}
+                        <span className={`relative inline-flex w-10 h-[22px] rounded-full transition-colors duration-300 ${
+                          extras[opt.key] ? 'bg-gold' : 'bg-white/[0.12]'
+                        }`}>
+                          <motion.span
+                            animate={{ x: extras[opt.key] ? 18 : 2 }}
+                            transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                            className={`absolute top-[3px] w-4 h-4 rounded-full shadow ${
+                              extras[opt.key] ? 'bg-space-bg' : 'bg-cream-dim/50'
+                            }`}
+                          />
+                        </span>
+                        <span className="flex items-center gap-1.5">
+                          <span>{opt.icon}</span> {opt.label}
+                        </span>
+                        {/* Blinking dot to attract attention when OFF */}
+                        {!extras[opt.key] && (
+                          <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-gold animate-pulse shadow-[0_0_8px_rgba(244,161,29,0.6)]" />
+                        )}
+                      </motion.button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Email or math gate */}
+                <div className="p-5 border-2 border-gold/20 rounded-lg bg-gold/[0.03] space-y-4">
+                  <p className="font-mono text-sm tracking-widest uppercase text-cream/70 font-semibold">🤖 Verify you're human — choose one:</p>
+
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    {/* Email option */}
+                    <div className="flex-1">
+                      <label className="block text-sm font-mono tracking-widest uppercase text-cream-dim/70 mb-2 font-medium">Email (optional)</label>
+                      <input
+                        type="email"
+                        value={visitorEmail}
+                        onChange={e => { setVisitorEmail(e.target.value); setGateError(''); }}
+                        placeholder="your@email.com"
+                        className="w-full px-4 py-3 bg-white/[0.05] border-2 border-white/[0.12] rounded-lg text-base text-cream placeholder:text-cream-dim/30 focus:border-gold/50 focus:outline-none transition-colors"
+                      />
+                    </div>
+
+                    <div className="flex items-end pb-3">
+                      <span className="text-cream-dim/50 text-sm font-bold font-mono">OR</span>
+                    </div>
+
+                    {/* Math challenge */}
+                    <div className="flex-1">
+                      <label className="block text-sm font-mono tracking-widest uppercase text-cream-dim/70 mb-2 font-medium">What is {mathA} + {mathB}?</label>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={mathAnswer}
+                        onChange={e => { setMathAnswer(e.target.value); setGateError(''); }}
+                        placeholder="?"
+                        className="w-full px-4 py-3 bg-white/[0.05] border-2 border-white/[0.12] rounded-lg text-base text-cream placeholder:text-cream-dim/30 focus:border-gold/50 focus:outline-none transition-colors"
+                      />
+                    </div>
+                  </div>
+
+                  {gateError && (
+                    <p className="text-sm text-red-400 font-mono font-semibold">{gateError}</p>
+                  )}
+                </div>
+
+                {/* Big CTA button */}
+                <button
+                  onClick={calculateWindow}
+                  disabled={!dob}
+                  className="w-full py-5 bg-gold text-space-bg font-bold uppercase tracking-widest text-base rounded-full shadow-[0_0_25px_rgba(244,161,29,0.5)] hover:shadow-[0_0_50px_rgba(244,161,29,0.8)] transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                >
+                  ✦ Reveal My Cosmic Profile — Free
+                </button>
+
+                <div className="flex flex-wrap justify-center gap-3 mt-2">
+                  <span className="px-4 py-2 border-2 border-emerald-400/30 rounded-full bg-emerald-400/[0.05] text-emerald-400 font-mono text-xs sm:text-sm font-bold tracking-widest uppercase">
+                    ✓ 100% Free
+                  </span>
+                  <span className="px-4 py-2 border-2 border-emerald-400/30 rounded-full bg-emerald-400/[0.05] text-emerald-400 font-mono text-xs sm:text-sm font-bold tracking-widest uppercase">
+                    ✓ No Sign-in
+                  </span>
+                  <span className="px-4 py-2 border-2 border-emerald-400/30 rounded-full bg-emerald-400/[0.05] text-emerald-400 font-mono text-xs sm:text-sm font-bold tracking-widest uppercase">
+                    ✓ No Credit Card
+                  </span>
+                  <span className="px-4 py-2 border-2 border-gold/30 rounded-full bg-gold/[0.05] text-gold font-mono text-xs sm:text-sm font-bold tracking-widest uppercase">
+                    ⚡ Instant Results
+                  </span>
+                </div>
+              </motion.div>
+            )}
 
             {/* ── After calculation: results + free cards + auth prompt ─── */}
             {weeklyWindows.length > 0 && (

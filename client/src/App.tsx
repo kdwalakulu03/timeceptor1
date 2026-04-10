@@ -12,6 +12,7 @@ import CelebDemoPage from './pages/CelebDemoPage';
 import DecidePage from './features/decide/DecidePage';
 import PlansPage from './features/plans/PlansPage';
 import CheckoutPage from './pages/CheckoutPage';
+import ResultsMainVisitorPage from './pages/ResultsMainVisitorPage';
 
 export default function App() {
   return (
@@ -19,6 +20,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/app" element={<AppPage />} />
+        <Route path="/results-main-visitor" element={<ResultsMainVisitorPage />} />
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/checkout" element={<CheckoutPage />} />
         <Route path="/swot" element={<SwotPage />} />

@@ -69,7 +69,7 @@ export function createBrandedCanvas(width: number, height: number): { canvas: HT
 export function drawLogoWatermark(ctx: CanvasRenderingContext2D, logoImg: HTMLImageElement | null, width: number) {
   if (!logoImg) return;
   ctx.globalAlpha = 0.08;
-  ctx.drawImage(logoImg, width - 120, 20, 100, 100);
+  ctx.drawImage(logoImg, width - 220, 10, 200, 200);
   ctx.globalAlpha = 1;
 }
 
@@ -83,8 +83,8 @@ export function drawCardFooter(ctx: CanvasRenderingContext2D, canvas: HTMLCanvas
   ctx.textAlign = 'center';
   ctx.fillText('timeceptor.com — powered by timecept.com™  ©', W / 2, H - 16);
   if (logoImg) {
-    ctx.globalAlpha = 0.6;
-    ctx.drawImage(logoImg, 16, H - 56, 44, 44);
+    ctx.globalAlpha = 0.7;
+    ctx.drawImage(logoImg, 14, H - 72, 64, 64);
     ctx.globalAlpha = 1;
   }
 }
