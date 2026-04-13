@@ -30,7 +30,6 @@ import {
   GoldenHourProduct,
   SwotProduct,
   PhotoCardProduct,
-  ReelProduct,
 } from '../components/visitor-products';
 import type {
   BirthData,
@@ -111,7 +110,6 @@ const PRODUCT_COMPONENTS: Record<string, React.ComponentType<{ birth: BirthData;
   'golden-hour': GoldenHourProduct,
   'swot':        SwotProduct,
   'photo-card':  PhotoCardProduct,
-  'reel':        ReelProduct,
   'horoscope':   HoroscopeChartProduct,
   'dasha':       DashaProduct,
   'prediction':  PredictionProduct,
@@ -119,9 +117,7 @@ const PRODUCT_COMPONENTS: Record<string, React.ComponentType<{ birth: BirthData;
   'remedies':    RemediesProduct,
 };
 
-const PRODUCT_TITLES: Record<string, { title: string; icon: string }> = {
-  reel: { title: 'Generate Timecept Cosmic Reel', icon: '🎬' },
-};
+const PRODUCT_TITLES: Record<string, { title: string; icon: string }> = {};
 [...TIMECEPTOR_PRODUCTS, ...ASTRO_PRODUCTS].forEach(p => {
   PRODUCT_TITLES[p.id] = { title: p.title, icon: p.icon };
 });
@@ -235,33 +231,6 @@ export default function ResultsMainVisitorPage() {
   // Active popup product id
   const [activeProduct, setActiveProduct] = useState<string | null>(null);
 
-  // Editable name for the reel — default random user ID
-  const [reelName, setReelName] = useState(() => `User.${Math.random().toString().slice(2, 8)}`);
-
-  // User-uploaded avatar for the reel — default placeholder
-  const [reelAvatar, setReelAvatar] = useState<string>('/ProfileUnavailable.jpg');
-  const avatarInputRef = useRef<HTMLInputElement>(null);
-
-  const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    // Validate type
-    if (!['image/png', 'image/jpeg'].includes(file.type)) {
-      alert('Only PNG or JPG images allowed.');
-      return;
-    }
-    // Validate size (max 1 MB)
-    if (file.size > 1024 * 1024) {
-      alert('Image must be under 1 MB.');
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === 'string') setReelAvatar(reader.result);
-    };
-    reader.readAsDataURL(file);
-  };
-
   // Auto-scroll to reel CTA when the page loads
   const reelCtaRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -354,100 +323,21 @@ export default function ResultsMainVisitorPage() {
             </div>
           </div>
 
-          {/* Desktop: two generate buttons */}
-          <div className="hidden sm:grid grid-cols-2 gap-3">
-            {/* ⚡ Quick Generate — zero friction */}
-            <button
-              onClick={() => setActiveProduct('reel')}
-              className="group relative text-left p-4 sm:p-5 rounded-xl border-2 border-gold/30 bg-gradient-to-br from-gold/[0.10] to-gold/[0.03] hover:border-gold/60 hover:from-gold/[0.18] transition-all cursor-pointer overflow-hidden"
-            >
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-gold/[0.06] to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out" />
-              <div className="relative z-10 flex flex-col items-center text-center gap-2">
-                <span className="text-3xl">⚡</span>
-                <span className="text-sm text-gold font-display font-bold tracking-wide">Quick Generate</span>
-                <span className="text-[10px] text-cream-dim/50 font-mono">One tap · instant reel</span>
+          {/* Single CTA — go to dedicated reel page */}
+          <Link
+            to={`/reel${search}`}
+            className="group relative block p-5 sm:p-6 rounded-xl border-2 border-gold/30 bg-gradient-to-br from-gold/[0.10] to-gold/[0.03] hover:border-gold/60 hover:from-gold/[0.18] transition-all cursor-pointer overflow-hidden"
+          >
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-gold/[0.06] to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out" />
+            <div className="relative z-10 flex flex-col sm:flex-row items-center gap-4 text-center sm:text-left">
+              <span className="text-4xl">🎬</span>
+              <div className="flex-1">
+                <span className="text-base text-gold font-display font-bold tracking-wide block">Open Reel Studio</span>
+                <span className="text-[11px] text-cream-dim/50 font-mono block mt-1">Choose name, photo & music · HD video with soundtrack · ~60s render</span>
               </div>
-            </button>
-
-            {/* ✏️ Personalize — name + photo, then generate */}
-            <div className="relative rounded-xl border-2 border-white/[0.08] bg-white/[0.02] hover:border-gold/25 transition-all overflow-hidden">
-              <div className="p-4 sm:p-5 flex flex-col gap-3">
-                <div className="flex flex-col items-center text-center gap-1">
-                  <span className="text-3xl">✏️</span>
-                  <span className="text-sm text-cream font-display font-bold tracking-wide">Personalize & Generate</span>
-                </div>
-
-                {/* Name */}
-                <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
-                  <span className="font-mono text-[9px] text-cream-dim/50 uppercase tracking-widest w-12 flex-shrink-0">Name</span>
-                  <input
-                    type="text"
-                    value={reelName}
-                    onChange={e => setReelName(e.target.value)}
-                    maxLength={30}
-                    className="flex-1 px-2.5 py-1.5 rounded-lg border border-gold/20 bg-gold/[0.04] text-cream text-xs font-mono tracking-wide placeholder:text-cream-dim/30 focus:border-gold/50 focus:outline-none focus:ring-1 focus:ring-gold/20 transition-all"
-                    placeholder="Your name"
-                  />
-                </div>
-
-                {/* Photo */}
-                <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
-                  <span className="font-mono text-[9px] text-cream-dim/50 uppercase tracking-widest w-12 flex-shrink-0">Photo</span>
-                  <div className="flex items-center gap-2 flex-1">
-                    <div className="w-8 h-8 rounded-full overflow-hidden border border-gold/25 bg-[#111] flex-shrink-0">
-                      <img src={reelAvatar} alt="" className="w-full h-full object-cover" />
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => avatarInputRef.current?.click()}
-                      className="px-2.5 py-1 rounded-lg border border-gold/20 bg-gold/[0.04] text-cream-dim text-[10px] font-mono hover:border-gold/40 hover:text-cream transition-all"
-                    >
-                      Upload
-                    </button>
-                    <input
-                      ref={avatarInputRef}
-                      type="file"
-                      accept=".png,.jpg,.jpeg"
-                      onChange={handleAvatarUpload}
-                      className="hidden"
-                    />
-                    <span className="font-mono text-[8px] text-cream-dim/30">1:1 · max 1 MB</span>
-                  </div>
-                </div>
-
-                {/* Generate button */}
-                <button
-                  onClick={() => setActiveProduct('reel')}
-                  className="w-full mt-1 py-2 rounded-lg bg-gold/15 border border-gold/30 text-gold text-xs font-mono tracking-widest uppercase hover:bg-gold/25 hover:border-gold/50 transition-all"
-                >
-                  Generate →
-                </button>
-              </div>
+              <span className="text-gold font-mono text-xs tracking-widest uppercase">Go →</span>
             </div>
-          </div>
-
-          {/* Mobile: laptop notice + share card shortcut */}
-          <div className="sm:hidden rounded-xl border-2 border-gold/20 bg-gold/[0.04] p-5">
-            <div className="flex flex-col items-center text-center gap-3">
-              <span className="text-3xl">💻</span>
-              <p className="text-sm text-cream font-display font-semibold">
-                Reel generation works best on a laptop
-              </p>
-              <p className="text-[11px] text-cream-dim/50 font-mono leading-relaxed max-w-[280px]">
-                Open this page on your laptop or desktop for the full video reel experience.
-              </p>
-              <div className="w-full h-px bg-white/[0.06] my-1" />
-              <p className="text-[11px] text-cream-dim/60 font-mono">
-                Meanwhile, download a shareable card instantly 👇
-              </p>
-              <button
-                onClick={() => setActiveProduct('photo-card')}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-full border border-gold/30 bg-gold/10 text-gold text-xs font-mono tracking-widest uppercase hover:bg-gold/20 hover:border-gold/50 transition-all"
-              >
-                🎨 Download Share Card
-              </button>
-            </div>
-          </div>
+          </Link>
         </motion.div>
 
         {/* ── Category 1: Timeceptor Products ─────────────────────── */}
@@ -557,10 +447,7 @@ export default function ResultsMainVisitorPage() {
       </footer>
 
       {/* ── Product popup modals ──────────────────────────────────── */}
-      {activeProduct === 'reel' && birthData && computed && (
-        <ReelProduct birth={birthData} computed={computed} onClose={() => setActiveProduct(null)} reelName={reelName} reelAvatar={reelAvatar} />
-      )}
-      {ActiveComponent && activeInfo && activeProduct !== 'reel' && (
+      {ActiveComponent && activeInfo && (
         <ProductModal
           open={!!activeProduct}
           onClose={() => setActiveProduct(null)}

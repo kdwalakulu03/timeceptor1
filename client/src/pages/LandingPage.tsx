@@ -118,26 +118,72 @@ export default function LandingPage() {
       <main className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6">
 
         {/* ══════════════════════════════════════════════════════════
-            Section 1: HERO — 2 lines, maximum intrigue
+            Section 1: HOW IT WORKS — canvas animation at the very top
             ══════════════════════════════════════════════════════════ */}
-        <section className="pt-12 sm:pt-20 pb-6 sm:pb-10 text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-gold/20 bg-gold/5 backdrop-blur-md mb-6"
-          >
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-gold opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-gold"></span>
-            </span>
-            <span className="font-mono text-[10px] sm:text-xs tracking-widest uppercase text-gold font-bold">Live engine · Real birth data · Computed now</span>
-          </motion.div>
+        <section className="pt-10 sm:pt-16 pb-10 sm:pb-16">
+          <div className="text-center mb-10 sm:mb-12">
 
+            <motion.h2 initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-3xl sm:text-5xl md:text-6xl font-display font-semibold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-cream via-gold-light to-gold">
+              How Timeceptor Works
+            </motion.h2>
+          </div>
+          <motion.div initial={{ opacity: 0, scale: 0.98 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} transition={{ duration: 0.8 }} className="relative group p-[2px] rounded-xl bg-gradient-to-b from-gold/30 via-gold/5 to-transparent shadow-2xl shadow-gold/5">
+            <div className="rounded-xl overflow-hidden bg-space-bg"><ModernExplainer /></div>
+            <div className="absolute inset-0 rounded-xl pointer-events-none border border-white/5 group-hover:border-gold/20 transition-colors duration-500" />
+          </motion.div>
+        </section>
+
+        {/* ══════════════════════════════════════════════════════════
+            Section 2: 🎬 COSMIC REEL CTA — auto-glowing border
+            ══════════════════════════════════════════════════════════ */}
+        <section className="pb-10 sm:pb-14">
+          <motion.div
+            initial={{ opacity: 0, y: 16, scale: 0.97 }}
+            whileInView={{ opacity: 1, y: 0, scale: 1 }}
+            viewport={{ once: true }}
+            className="max-w-2xl mx-auto"
+          >
+            <Link
+              to="/reel"
+              className="group relative block p-5 sm:p-6 rounded-xl border-2 border-gold/30 bg-gradient-to-br from-gold/[0.10] to-gold/[0.03] hover:from-gold/[0.18] transition-all cursor-pointer overflow-hidden animate-[glow-border_3s_ease-in-out_infinite]"
+              style={{
+                animation: 'glow-border 3s ease-in-out infinite',
+              }}
+            >
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-gold/[0.06] to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out" />
+              <div className="relative z-10 flex flex-col sm:flex-row items-center gap-4 text-center sm:text-left">
+                <span className="text-4xl sm:text-5xl group-hover:scale-110 transition-transform">🎬</span>
+                <div className="flex-1">
+                  <span className="text-lg sm:text-xl text-gold font-display font-bold tracking-wide block">Get Your Cosmic Reel</span>
+                  <span className="text-xs sm:text-sm text-cream-dim/50 font-mono block mt-1">HD video with music · Free · No sign-up</span>
+                </div>
+                <div className="flex flex-col items-center gap-1">
+                  <span className="text-gold font-mono text-sm tracking-widest uppercase group-hover:translate-x-1 transition-transform">Go →</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[9px] font-mono tracking-widest uppercase px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-bold">Free</span>
+                  </div>
+                </div>
+              </div>
+            </Link>
+          </motion.div>
+          {/* CSS for auto-glowing border */}
+          <style>{`
+            @keyframes glow-border {
+              0%, 100% { border-color: rgba(244,161,29,0.3); box-shadow: 0 0 8px rgba(244,161,29,0.1); }
+              50% { border-color: rgba(244,161,29,0.7); box-shadow: 0 0 25px rgba(244,161,29,0.3); }
+            }
+          `}</style>
+        </section>
+
+        {/* ══════════════════════════════════════════════════════════
+            Section 3: HERO + CELEBRITY PROOF — "This was written…"
+            ══════════════════════════════════════════════════════════ */}
+        <section className="pb-6 sm:pb-10 text-center">
           <motion.h1
             initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.1 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
             className="text-3xl sm:text-5xl md:text-6xl font-display font-semibold leading-tight mb-4"
           >
             This was written in their{' '}
@@ -146,17 +192,15 @@ export default function LandingPage() {
 
           <motion.p
             initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.6, delay: 0.25 }}
-            className="text-base sm:text-xl text-cream-dim/70 max-w-xl mx-auto"
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6, delay: 0.15 }}
+            className="text-base sm:text-xl text-cream-dim/70 max-w-xl mx-auto mb-10"
           >
             Sūrya Siddhānta insight, decrypted by the Timeceptor engine.
           </motion.p>
         </section>
 
-        {/* ══════════════════════════════════════════════════════════
-            Section 2: CELEBRITY PROOF — THE HOOK (Vedic tags visible)
-            ══════════════════════════════════════════════════════════ */}
         <section className="pb-10 sm:pb-16">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-5">
             {celebResults.length > 0 ? celebResults.map((cr, idx) => {
@@ -165,8 +209,9 @@ export default function LandingPage() {
                 <motion.div
                   key={cr.celeb.id}
                   initial={{ opacity: 0, y: 24 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6, delay: 0.15 + idx * 0.14 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.6, delay: 0.1 + idx * 0.14 }}
                   className="border border-gold/25 rounded-xl p-5 sm:p-6 bg-white/[0.02] hover:bg-white/[0.05] hover:border-gold/45 transition-all flex flex-col"
                 >
                   {/* Identity row */}
@@ -261,7 +306,7 @@ export default function LandingPage() {
         </section>
 
         {/* ══════════════════════════════════════════════════════════
-            Section 3: FOUR SERVICES — What you get
+            Section 4: FOUR SERVICES — What you get
             ══════════════════════════════════════════════════════════ */}
         <section className="py-10 sm:py-16 border-t border-gold/10">
           <div className="text-center mb-8 sm:mb-12">
@@ -352,24 +397,6 @@ export default function LandingPage() {
               <Link to="/plans" className="block text-center px-4 py-2.5 bg-purple-500/10 border border-purple-500/30 rounded-lg font-mono text-xs tracking-widest uppercase text-purple-300 hover:bg-purple-500/20 hover:border-purple-500/50 transition-all font-bold">Build My Life Plan →</Link>
             </motion.div>
           </div>
-        </section>
-
-        {/* ══════════════════════════════════════════════════════════
-            Section 4: HOW IT WORKS — for the skeptics
-            ══════════════════════════════════════════════════════════ */}
-        <section className="py-10 sm:py-16 border-t border-gold/10">
-          <div className="text-center mb-10 sm:mb-12">
-            <motion.div initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-gold/20 bg-gold/5 backdrop-blur-md mb-6">
-              <span className="font-mono text-[10px] sm:text-xs tracking-widest uppercase text-cream-dim font-bold">For the skeptics</span>
-            </motion.div>
-            <motion.h2 initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-3xl sm:text-5xl md:text-6xl font-display font-semibold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-cream via-gold-light to-gold">
-              How Timeceptor Works
-            </motion.h2>
-          </div>
-          <motion.div initial={{ opacity: 0, scale: 0.98 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} transition={{ duration: 0.8 }} className="relative group p-[2px] rounded-xl bg-gradient-to-b from-gold/30 via-gold/5 to-transparent shadow-2xl shadow-gold/5">
-            <div className="rounded-xl overflow-hidden bg-space-bg"><ModernExplainer /></div>
-            <div className="absolute inset-0 rounded-xl pointer-events-none border border-white/5 group-hover:border-gold/20 transition-colors duration-500" />
-          </motion.div>
         </section>
 
         {/* ══════════════════════════════════════════════════════════

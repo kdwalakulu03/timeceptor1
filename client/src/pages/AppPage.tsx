@@ -264,7 +264,14 @@ export default function AppPage() {
       params.set('lng', coords.lng.toFixed(4));
       if (location) params.set('loc', encodeURIComponent(location.split(',')[0].trim()));
       params.set('service', selectedService);
-      navigate(`/results-main-visitor?${params.toString()}`);
+
+      // Reel product intent → go straight to reel studio (autostart rendering)
+      if (productIntent === 'reel') {
+        params.set('autostart', '1');
+        navigate(`/reel?${params.toString()}`);
+      } else {
+        navigate(`/results-main-visitor?${params.toString()}`);
+      }
       return;
     }
 
@@ -620,20 +627,36 @@ export default function AppPage() {
           </div>
 
           <h1 className="font-display text-3xl sm:text-4xl md:text-5xl text-gold font-bold tracking-wider leading-tight mb-4">
-            Your <span className="underline decoration-gold/40 underline-offset-4">Personal</span> Vedic Profile
+            {productIntent === 'reel'
+              ? <>Enter Your <span className="underline decoration-gold/40 underline-offset-4">Birth Details</span></>
+              : <>Your <span className="underline decoration-gold/40 underline-offset-4">Personal</span> Vedic Profile</>}
           </h1>
 
-          <p className="text-cream/80 text-base sm:text-lg max-w-2xl mx-auto leading-relaxed mb-3">
-            Generic "12-sign" horoscopes are one-size-fits-all — they ignore your <em>exact</em> birth
-            time, coordinates, and planetary houses. That's why they feel vague.
-          </p>
-          <p className="text-cream-dim/70 text-sm sm:text-base max-w-xl mx-auto leading-relaxed mb-4">
-            Enter <strong className="text-gold">your</strong> birth details below to get a precise chart with
-            <span className="text-gold"> golden hours</span>, <span className="text-gold">SWOT analysis</span>,
-            <span className="text-gold"> dasha periods</span>, <span className="text-gold">predictions</span>,
-            <span className="text-gold"> health precautions</span>, <span className="text-gold">remedies</span> & more —
-            all calculated for <em>you</em>, not your zodiac sign.
-          </p>
+          {productIntent === 'reel' ? (
+            <>
+              <p className="text-cream/80 text-base sm:text-lg max-w-2xl mx-auto leading-relaxed mb-3">
+                🎬 We need your <em>exact</em> birth date, time & location to render your personalised
+                <span className="text-gold"> Cosmic Reel</span> — an HD video with your Vedic charts, dashas & more.
+              </p>
+              <p className="text-cream-dim/70 text-sm sm:text-base max-w-xl mx-auto leading-relaxed mb-4">
+                Fill in the form below and hit <strong className="text-gold">Generate</strong> — your reel will be ready in ~60 seconds.
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="text-cream/80 text-base sm:text-lg max-w-2xl mx-auto leading-relaxed mb-3">
+                Generic "12-sign" horoscopes are one-size-fits-all — they ignore your <em>exact</em> birth
+                time, coordinates, and planetary houses. That's why they feel vague.
+              </p>
+              <p className="text-cream-dim/70 text-sm sm:text-base max-w-xl mx-auto leading-relaxed mb-4">
+                Enter <strong className="text-gold">your</strong> birth details below to get a precise chart with
+                <span className="text-gold"> golden hours</span>, <span className="text-gold">SWOT analysis</span>,
+                <span className="text-gold"> dasha periods</span>, <span className="text-gold">predictions</span>,
+                <span className="text-gold"> health precautions</span>, <span className="text-gold">remedies</span> & more —
+                all calculated for <em>you</em>, not your zodiac sign.
+              </p>
+            </>
+          )}
         </motion.section>
 
         <div id="form" className="max-w-3xl mx-auto scroll-mt-4">
@@ -787,7 +810,7 @@ export default function AppPage() {
                   disabled={!dob}
                   className="w-full py-5 bg-gold text-space-bg font-bold uppercase tracking-widest text-base rounded-full shadow-[0_0_25px_rgba(244,161,29,0.5)] hover:shadow-[0_0_50px_rgba(244,161,29,0.8)] transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
                 >
-                  ✦ Reveal My Cosmic Profile — Free
+                  {productIntent === 'reel' ? '🎬 Generate My Cosmic Reel — Free' : '✦ Reveal My Cosmic Profile — Free'}
                 </button>
 
                 <div className="flex flex-wrap justify-center gap-3 mt-2">
