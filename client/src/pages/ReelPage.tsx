@@ -472,6 +472,7 @@ function GeneratorPage({ birthData, chart, search }: {
   // Pick up reel preferences from sessionStorage (set by ShowcasePage)
   const [reelName, setReelName] = useState(() => sessionStorage.getItem('tc_reel_name') || `User.${Math.random().toString().slice(2, 8)}`);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const avatarFileRef = useRef<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState(() => sessionStorage.getItem('tc_reel_avatar') || '/ProfileUnavailable.png');
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
@@ -496,6 +497,7 @@ function GeneratorPage({ birthData, chart, search }: {
       // Convert base64 to File so we can upload it
       fetch(stored).then(r => r.blob()).then(blob => {
         const file = new File([blob], 'avatar.jpg', { type: blob.type });
+        avatarFileRef.current = file;
         setAvatarFile(file);
         avatarReady.current = true;
       }).catch(() => { avatarReady.current = true; });
@@ -528,6 +530,7 @@ function GeneratorPage({ birthData, chart, search }: {
     if (!file) return;
     if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) { alert('Only PNG, JPG or WebP images allowed.'); return; }
     if (file.size > 5 * 1024 * 1024) { alert('Image must be under 5 MB.'); return; }
+    avatarFileRef.current = file;
     setAvatarFile(file);
     const reader = new FileReader();
     reader.onload = () => { if (typeof reader.result === 'string') setAvatarPreview(reader.result); };
@@ -562,8 +565,9 @@ function GeneratorPage({ birthData, chart, search }: {
 
     try {
       let avatarPath: string | undefined;
-      if (avatarFile) {
-        try { avatarPath = await uploadAvatar(avatarFile); } catch (e) { console.warn('Avatar upload failed, proceeding without:', e); }
+      const fileToUpload = avatarFileRef.current;
+      if (fileToUpload) {
+        try { avatarPath = await uploadAvatar(fileToUpload); } catch (e) { console.warn('Avatar upload failed, proceeding without:', e); }
       }
 
       const bd = new Date(`${birthData.dob}T${birthData.tob}`);
